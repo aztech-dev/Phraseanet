@@ -135,6 +135,7 @@ class DataboxesController extends Controller
                     'password' => $password,
                     'dbname'   => $dbName,
                 ]);
+
                 $connection->connect();
             } catch (DBALException $e) {
                 return $this->app->redirectPath('admin_databases', ['success' => 0, 'error' => 'database-failed']);
