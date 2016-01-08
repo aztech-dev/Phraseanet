@@ -64,37 +64,9 @@ class DataboxService
             throw new \InvalidArgumentException($data_template->getRealPath() . " does not exist");
         }
 
-        $sql = 'SELECT sbas_id
-            FROM sbas
-            WHERE host = :host AND port = :port AND dbname = :dbname
-              AND user = :user AND pwd = :password';
+        $params = $this->assertDatabaseIsNotUsedByAnotherDatabase($connection);
 
-        $params = [
-            ':host'     => $connection->getHost(),
-            ':port'     => $connection->getPort(),
-            ':dbname'   => $connection->getDatabase(),
-            ':user'     => $connection->getUsername(),
-            ':password' => $connection->getPassword()
-        ];
-
-        $stmt = $this->applicationBox->get_connection()->prepare($sql);
-        $stmt->execute($params);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        if ($row) {
-            throw new \RuntimeException('Database is already used by another databox');
-        }
-
-        try {
-            $sql = 'CREATE DATABASE `' . $connection->getDatabase() . '`
-              CHARACTER SET utf8 COLLATE utf8_unicode_ci';
-            $stmt = $connection->prepare($sql);
-            $stmt->execute();
-            $stmt->closeCursor();
-        } catch (\Exception $e) {
-
-        }
+        $this->createDatabaseForNewDatabox($connection);
 
         $sql = 'USE `' . $connection->getDatabase() . '`';
         $stmt = $connection->prepare($sql);
@@ -141,5 +113,54 @@ class DataboxService
         $this->eventDispatcher->dispatch(DataboxEvents::CREATED, new CreatedEvent($databox));
 
         return $databox;
+    }
+
+    /**
+     * @param Connection $connection
+     * @return array
+     * @throws \Doctrine\DBAL\DBALException
+     */
+    protected function assertDatabaseIsNotUsedByAnotherDatabase(Connection $connection)
+    {
+        $sql = 'SELECT sbas_id
+            FROM sbas
+            WHERE host = :host AND port = :port AND dbname = :dbname
+              AND user = :user AND pwd = :password';
+
+        $params = [
+            ':host' => $connection->getHost(),
+            ':port' => $connection->getPort(),
+            ':dbname' => $connection->getDatabase(),
+            ':user' => $connection->getUsername(),
+            ':password' => $connection->getPassword()
+        ];
+
+        $stmt = $this->applicationBox->get_connection()->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+
+        if ($row) {
+            throw new \RuntimeException('Database is already used by another databox');
+        }
+
+        return $params;
+    }
+
+    /**
+     * @param Connection $connection
+     */
+    protected function createDatabaseForNewDatabox(Connection $connection)
+    {
+        try {
+            $sql = 'CREATE DATABASE `' . $connection->getDatabase() . '`
+              CHARACTER SET utf8 COLLATE utf8_unicode_ci';
+
+            $stmt = $connection->prepare($sql);
+            $stmt->execute();
+            $stmt->closeCursor();
+        } catch (\Exception $e) {
+
+        }
     }
 }
