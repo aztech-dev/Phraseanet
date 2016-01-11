@@ -11,7 +11,6 @@
 
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
-use Alchemy\Phrasea\Core\Connection\ConnectionSettings;
 use Alchemy\Phrasea\Core\PhraseaTokens;
 use Alchemy\Phrasea\Core\Thumbnail\ThumbnailedElement;
 use Alchemy\Phrasea\Core\Version\DataboxVersionRepository;
@@ -257,17 +256,9 @@ class databox extends base implements ThumbnailedElement
         $connectionConfig = $connectionConfigs[$sbas_id];
         $connection = $app['db.provider']($connectionConfig);
 
-        $connectionSettings = new ConnectionSettings(
-            $connectionConfig['host'],
-            $connectionConfig['port'],
-            $connectionConfig['dbname'],
-            $connectionConfig['user'],
-            $connectionConfig['password']
-        );
-
         $versionRepository = new DataboxVersionRepository($connection);
 
-        parent::__construct($app, $connection, $connectionSettings, $versionRepository);
+        parent::__construct($app, $connection, $versionRepository);
 
         $this->loadFromRow($row);
     }
@@ -282,7 +273,7 @@ class databox extends base implements ThumbnailedElement
 
         $contents = str_replace(
             ["{{basename}}", "{{datapathnoweb}}"]
-            , [$this->connectionSettings->getDatabaseName(), rtrim($path_doc, '/').'/']
+            , [$this->connection->getDatabase(), rtrim($path_doc, '/').'/']
             , $contents
         );
 
@@ -405,14 +396,12 @@ class databox extends base implements ThumbnailedElement
             $this->saveStructure($dom_struct);
 
             $type = isset($field['type']) ? $field['type'] : 'string';
-            $type = in_array($type
-                    , [
-                    databox_field::TYPE_DATE
-                    , databox_field::TYPE_NUMBER
-                    , databox_field::TYPE_STRING
-                    , databox_field::TYPE_TEXT
-                    ]
-                ) ? $type : databox_field::TYPE_STRING;
+            $type = in_array($type, [
+                    databox_field::TYPE_DATE,
+                    databox_field::TYPE_NUMBER,
+                    databox_field::TYPE_STRING,
+                    databox_field::TYPE_TEXT
+                ]) ? $type : databox_field::TYPE_STRING;
 
             $multi = isset($field['multi']) ? (Boolean) (string) $field['multi'] : false;
 
@@ -591,7 +580,7 @@ class databox extends base implements ThumbnailedElement
 
     public function get_viewname()
     {
-        return $this->viewname ? : $this->connectionSettings->getDatabaseName();
+        return $this->viewname ? : $this->connection->getDatabase();
     }
 
     public function set_viewname($viewname)
@@ -896,9 +885,9 @@ class databox extends base implements ThumbnailedElement
     public function get_serialized_server_info()
     {
         return sprintf("%s@%s:%s (MySQL %s)",
-            $this->connectionSettings->getDatabaseName(),
-            $this->connectionSettings->getHost(),
-            $this->connectionSettings->getPort(),
+            $this->connection->getDatabase(),
+            $this->connection->getHost(),
+            $this->connection->getPort(),
             $this->get_connection()->getWrappedConnection()->getAttribute(\PDO::ATTR_SERVER_VERSION)
         );
     }

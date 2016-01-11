@@ -3,7 +3,10 @@
 namespace Alchemy\Phrasea\Core\Provider;
 
 use Alchemy\Phrasea\Application as PhraseaApplication;
+use Alchemy\Phrasea\Databox\CachingDataboxRepository;
+use Alchemy\Phrasea\Databox\DataboxFactory;
 use Alchemy\Phrasea\Databox\DataboxService;
+use Alchemy\Phrasea\Databox\DbalDataboxRepository;
 use Silex\Application;
 use Silex\ServiceProviderInterface;
 
@@ -23,6 +26,22 @@ class DataboxServiceProvider implements ServiceProviderInterface
         if (!$app instanceof PhraseaApplication) {
             throw new \LogicException('Expects $app to be an instance of Phraseanet application');
         }
+
+        $app['repo.databoxes'] = $app->share(function (PhraseaApplication $app) {
+            $factory = new DataboxFactory($app);
+            $appbox = $app->getApplicationBox();
+
+            $repository = new CachingDataboxRepository(
+                new DbalDataboxRepository($appbox->get_connection(), $factory),
+                $app['cache'],
+                $appbox->get_cache_key($appbox::CACHE_LIST_BASES),
+                $factory
+            );
+
+            $factory->setDataboxRepository($repository);
+
+            return $repository;
+        });
 
         $app['databoxes.service'] = $app->share(function (PhraseaApplication $app) {
              return new DataboxService($app, $app['repo.databoxes']);

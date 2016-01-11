@@ -53,17 +53,9 @@ class appbox extends base
         $connectionConfig = $app['conf']->get(['main', 'database']);
         $connection = $app['db.provider']($connectionConfig);
 
-        $connectionSettings = new ConnectionSettings(
-            $connectionConfig['host'],
-            $connectionConfig['port'],
-            $connectionConfig['dbname'],
-            $connectionConfig['user'],
-            $connectionConfig['password']
-        );
-
         $versionRepository = new AppboxVersionRepository($connection);
 
-        parent::__construct($app, $connection, $connectionSettings, $versionRepository);
+        parent::__construct($app, $connection, $versionRepository);
     }
 
     public function write_collection_pic(Alchemyst $alchemyst, Filesystem $filesystem, collection $collection, SymfoFile $pathfile = null, $pic_type)

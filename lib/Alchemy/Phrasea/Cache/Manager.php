@@ -17,46 +17,30 @@ use Monolog\Logger;
 
 class Manager
 {
-    private $file;
-    /** @var Compiler */
-    private $compiler;
-    private $registry = [];
-    private $drivers = [];
-    /** @var Logger */
-    private $logger;
-    /** @var Factory */
-    private $factory;
-
-    public function __construct(Compiler $compiler, $file, Logger $logger, Factory $factory)
-    {
-        $this->file = $file;
-        $this->compiler = $compiler;
-        $this->logger = $logger;
-        $this->factory = $factory;
-
-        if (!is_file($file)) {
-            $this->registry = [];
-            $this->save();
-        } else {
-            $this->registry = require $file;
-        }
-    }
 
     /**
-     * Flushes all registered cache
-     *
-     * @return Manager
+     * @var Cache[]
      */
-    public function flushAll()
+    private $caches = [];
+
+    /**
+     * @var Logger
+     */
+    private $logger;
+
+    /**
+     * @var Factory
+     */
+    private $factory;
+
+    /**
+     * @param Logger $logger
+     * @param Factory $factory
+     */
+    public function __construct(Logger $logger, Factory $factory)
     {
-        foreach ($this->drivers as $driver) {
-            $driver->flushAll();
-        }
-
-        $this->registry = [];
-        $this->save();
-
-        return $this;
+        $this->logger = $logger;
+        $this->factory = $factory;
     }
 
     /**
@@ -66,57 +50,34 @@ class Manager
      *
      * @return Cache
      */
-    public function factory($label, $name, $options)
+    public function factory($label, $name, array $options)
     {
-        if ($this->isAlreadyRegistered($name, $label) && $this->isAlreadyLoaded($label)) {
-            return $this->drivers[$label];
+        if (! isset($options['namespace']) || ! is_string($options['namespace'])) {
+            $options['namespace'] = md5(gethostname() . '-' . __DIR__);
+        }
+
+        $cacheHash = $this->getCacheHash($label, $name, $options);
+
+        if (isset($this->caches[$cacheHash])) {
+            return $this->caches[$cacheHash];
         }
 
         try {
             $cache = $this->factory->create($name, $options);
         } catch (RuntimeException $e) {
             $this->logger->error($e->getMessage());
-            $cache = $this->factory->create('array', []);
+            $cache = $this->factory->create('array', $options);
         }
 
-        if (isset($options['namespace']) && is_string($options['namespace'])) {
-            $cache->setNamespace($options['namespace']);
-        } else {
-            $cache->setNamespace(md5(gethostname().'-'.__DIR__));
-        }
+        $cache->setNamespace($options['namespace']);
 
-        $this->drivers[$label] = $cache;
-
-        if (!$this->isAlreadyRegistered($name, $label)) {
-            $this->register($name, $label);
-            $cache->flushAll();
-        }
+        $this->caches[$cacheHash] = $cache;
 
         return $cache;
     }
 
-    private function register($name, $label)
+    private function getCacheHash($label, $name, array $options)
     {
-        $this->registry[$label] = $name;
-        $this->save();
-    }
-
-    private function isAlreadyRegistered($name, $label)
-    {
-        return isset($this->registry[$label]) && $name === $this->registry[$label];
-    }
-
-    private function isAlreadyLoaded($label)
-    {
-        return isset($this->drivers[$label]);
-    }
-
-    private function save()
-    {
-        $date = new \DateTime();
-        $data = $this->compiler->compile($this->registry)
-            . "\n// Last Update on ".$date->format(DATE_ISO8601)." \n";
-
-        file_put_contents($this->file, $data);
+        return md5($label . $name .serialize($options));
     }
 }

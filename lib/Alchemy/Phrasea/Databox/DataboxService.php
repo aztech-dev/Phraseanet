@@ -34,7 +34,9 @@ class DataboxService
      */
     private $databoxRepository;
 
-    /** @var DublinCoreFieldProvider */
+    /**
+     * @var DublinCoreFieldProvider
+     */
     private $dcFieldProvider;
 
     /**
@@ -70,7 +72,7 @@ class DataboxService
             throw new \InvalidArgumentException($dataTemplate->getRealPath() . " does not exist");
         }
 
-        $this->assertDatabaseIsNotUsedByAnotherDatabase($connection);
+        $this->assertDatabaseIsNotUsedByAnotherDatabox($connection);
         $this->createDatabaseForNewDatabox($connection);
         $this->useDataboxDatabase($connection);
 
@@ -97,7 +99,7 @@ class DataboxService
     {
         $databoxConnection = $this->createDataboxConnection($host, $port, $user, $password, $databaseName);
 
-        $this->assertDatabaseIsNotUsedByAnotherDatabase($databoxConnection);
+        $this->assertDatabaseIsNotUsedByAnotherDatabox($databoxConnection);
 
         $databox = $this->registerDataboxInAppBox($databoxConnection);
 
@@ -124,7 +126,7 @@ class DataboxService
      * @return array
      * @throws \Doctrine\DBAL\DBALException
      */
-    protected function assertDatabaseIsNotUsedByAnotherDatabase(Connection $connection)
+    protected function assertDatabaseIsNotUsedByAnotherDatabox(Connection $connection)
     {
         $sql = 'SELECT sbas_id
                 FROM sbas
@@ -139,10 +141,10 @@ class DataboxService
             ':password' => $connection->getPassword()
         ];
 
-        $stmt = $this->applicationBox->get_connection()->prepare($sql);
-        $stmt->execute($params);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
+        $statement = $this->applicationBox->get_connection()->prepare($sql);
+        $statement->execute($params);
+        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+        $statement->closeCursor();
 
         if ($row) {
             throw new \RuntimeException('Database is already used by another databox');
@@ -180,8 +182,6 @@ class DataboxService
 
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
-        $stmt->closeCursor();
-
         return $row['ord'];
     }
 
@@ -195,7 +195,6 @@ class DataboxService
         $sql = 'USE `' . $connection->getDatabase() . '`';
         $stmt = $connection->prepare($sql);
         $stmt->execute();
-        $stmt->closeCursor();
     }
 
     /**
@@ -210,8 +209,8 @@ class DataboxService
         $sql = 'INSERT INTO sbas (sbas_id, ord, host, port, dbname, sqlengine, user, pwd)
               VALUES (null, :ord, :host, :port, :dbname, "MYSQL", :user, :password)';
 
-        $stmt = $appConnection->prepare($sql);
-        $stmt->execute([
+        $statement = $appConnection->prepare($sql);
+        $statement->execute([
             ':ord' => $this->getNewDataboxOrdinal(),
             ':host' => $databoxConnection->getHost(),
             ':port' => $databoxConnection->getPort(),
@@ -219,8 +218,7 @@ class DataboxService
             ':user' => $databoxConnection->getUsername(),
             ':password' => $databoxConnection->getPassword()
         ]);
-
-        $stmt->closeCursor();
+        $statement->closeCursor();
 
         $databoxId = (int) $appConnection->lastInsertId();
 

@@ -23,14 +23,14 @@ class Factory
     }
 
     /**
-     * @param type $name
-     * @param type $options
+     * @param string $name
+     * @param array $options
      *
      * @return Cache
      *
      * @throws RuntimeException
      */
-    public function create($name, $options)
+    public function create($name, array $options)
     {
         switch (strtolower($name)) {
             case 'apc':
