@@ -44,6 +44,7 @@ use Alchemy\Phrasea\Core\Provider\ConfigurationTesterServiceProvider;
 use Alchemy\Phrasea\Core\Provider\ContentNegotiationServiceProvider;
 use Alchemy\Phrasea\Core\Provider\ConvertersServiceProvider;
 use Alchemy\Phrasea\Core\Provider\CSVServiceProvider;
+use Alchemy\Phrasea\Core\Provider\DataboxServiceProvider;
 use Alchemy\Phrasea\Core\Provider\FeedServiceProvider;
 use Alchemy\Phrasea\Core\Provider\FileServeServiceProvider;
 use Alchemy\Phrasea\Core\Provider\FtpServiceProvider;
@@ -210,6 +211,7 @@ class Application extends SilexApplication
         $this->register(new BrowserServiceProvider());
         $this->register(new ConvertersServiceProvider());
         $this->register(new CSVServiceProvider());
+        $this->register(new DataboxServiceProvider());
         $this->register(new RegistrationServiceProvider());
         $this->register(new ImagineServiceProvider());
         $this->setUpImagine();
@@ -376,6 +378,7 @@ class Application extends SilexApplication
             'Alchemy\Phrasea\ControllerProvider\User\Preferences' => [],
             'Alchemy\EmbedProvider\EmbedServiceProvider' => [],
         ];
+
         foreach ($providers as $class => $values) {
             $this->register(new $class, $values);
         }
