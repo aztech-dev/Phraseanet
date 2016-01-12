@@ -222,14 +222,6 @@ class DataboxService
 
         $databoxId = (int) $appConnection->lastInsertId();
 
-        $this->application['orm.add']([
-            'host' => $databoxConnection->getHost(),
-            'port' => $databoxConnection->getPort(),
-            'dbname' => $databoxConnection->getDatabase(),
-            'user' => $databoxConnection->getUsername(),
-            'password' => $databoxConnection->getPassword()
-        ]);
-
         $this->applicationBox->delete_data_from_cache(\appbox::CACHE_LIST_BASES);
 
         return $this->applicationBox->get_databox($databoxId);
@@ -254,7 +246,7 @@ class DataboxService
         ];
 
         /** @var Connection $databoxConnection */
-        $databoxConnection = $this->application['db.provider']($connectionParams);
+        $databoxConnection = $this->application['dbal.provider']($connectionParams);
         $databoxConnection->connect();
 
         return $databoxConnection;
