@@ -106,7 +106,6 @@ class DataboxService
         $databox->delete_data_from_cache(\databox::CACHE_COLLECTIONS);
 
         \phrasea::reset_sbasDatas($this->applicationBox);
-        \cache_databox::update($this->application, $databox->get_sbas_id(), 'structure');
 
         $this->eventDispatcher->dispatch(DataboxEvents::MOUNTED, new MountedEvent($databox));
 

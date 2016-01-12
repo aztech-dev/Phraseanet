@@ -16,19 +16,9 @@ use Alchemy\Phrasea\Core\Configuration\Compiler;
  */
 class InstallerTest extends \PhraseanetTestCase
 {
-    public function tearDown()
-    {
-        $app = new Application(Application::ENV_TEST);
-        \phrasea::reset_sbasDatas($app['phraseanet.appbox']);
-        \phrasea::reset_baseDatas($app['phraseanet.appbox']);
-        parent::tearDown();
-    }
-
     public function testInstall()
     {
         $app = new Application(Application::ENV_TEST);
-        \phrasea::reset_sbasDatas($app['phraseanet.appbox']);
-        \phrasea::reset_baseDatas($app['phraseanet.appbox']);
 
         $app->bindRoutes();
 
@@ -54,24 +44,16 @@ class InstallerTest extends \PhraseanetTestCase
             return new \appbox($app);
         });
 
-        $abInfo = [
-            'host'     => $credentials['host'],
-            'port'     => $credentials['port'],
-            'user'     => $credentials['user'],
-            'password' => $credentials['password'],
-            'dbname'   => 'ab_setup_test',
-        ];
-
-        $abConn = $app['dbal.provider']($abInfo);
-        $dbConn = $app['dbal.provider']([
-            'host'     => $credentials['host'],
-            'port'     => $credentials['port'],
-            'user'     => $credentials['user'],
-            'password' => $credentials['password'],
-            'dbname'   => 'db_setup_test',
+        $abConn = $app['dbal.provider']([
+            'driver'   => 'pdo_sqlite',
+            'path'     => sprintf('%s/%s', $app['tmp.path'], 'ab-test'),
         ]);
-        $key = $app['orm.add']($abInfo);
-        $app['orm.ems.default'] = $key;
+
+        $dbConn = $app['dbal.provider']([
+            'driver'   => 'pdo_sqlite',
+            'path'     => sprintf('%s/%s', $app['tmp.path'], 'db-test'),
+        ]);
+
         $dataPath = __DIR__ . '/../../../../../datas/';
 
         $installer = new Installer($app);
@@ -90,7 +72,5 @@ class InstallerTest extends \PhraseanetTestCase
 
         @unlink($configFile);
         @unlink($compiledFile);
-
-        $app['connection.pool.manager']->closeAll();
     }
 }

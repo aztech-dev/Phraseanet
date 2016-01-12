@@ -64,8 +64,6 @@ class DatabaseHelper extends Helper
 
         unset($connection);
 
-        $this->app['connection.pool.manager']->closeAll();
-
         return [
             'connection' => $dbOK,
             'innodb'     => true,

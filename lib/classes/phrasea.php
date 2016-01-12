@@ -14,6 +14,9 @@ use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
 use Alchemy\Phrasea\Collection\Reference\CollectionReferenceRepository;
 use Symfony\Component\Translation\TranslatorInterface;
 
+/**
+ * @deprecated This class doesn't know it yet, but it's already dead.
+ */
 class phrasea
 {
     private static $_bas2sbas = false;
@@ -33,6 +36,11 @@ class phrasea
     const CACHE_SBAS_FROM_BAS = 'sbas_from_bas';
     const CACHE_SBAS_PARAMS = 'sbas_params';
 
+    /**
+     * @param Application $app
+     * @return bool
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function clear_sbas_params(Application $app)
     {
         self::$_sbas_params = null;
@@ -41,40 +49,43 @@ class phrasea
         return true;
     }
 
+    /**
+     * @param Application $app
+     * @return array|bool
+     * @throws \Doctrine\DBAL\DBALException
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function sbas_params(Application $app)
     {
         if (self::$_sbas_params) {
             return self::$_sbas_params;
         }
 
-        try {
-            $params = $app->getApplicationBox()->get_data_from_cache(self::CACHE_SBAS_PARAMS);
-            if (is_array($params)) {
-                self::$_sbas_params = $params;
-
-                return $params;
-            }
-        } catch (\Exception $e) {
-
-        }
-
         self::$_sbas_params = [];
 
-        $sql = 'SELECT sbas_id, host, port, user, pwd as password, dbname FROM sbas';
-        $stmt = $app->getApplicationBox()->get_connection()->prepare($sql);
-        $stmt->execute();
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
+        $applicationBox = $app->getApplicationBox();
+        $appboxConnection = $applicationBox->get_connection();
 
-        foreach ($rs as $row) {
+        $query = 'SELECT sbas_id, host, port, user, pwd, sqlengine as password, dbname FROM sbas';
+
+        $statement = $appboxConnection->prepare($query);
+        $statement->execute();
+
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as $row) {
             self::$_sbas_params[$row['sbas_id']] = $row;
         }
-
-        $app->getApplicationBox()->set_data_to_cache(self::$_sbas_params, self::CACHE_SBAS_PARAMS);
 
         return self::$_sbas_params;
     }
 
+    /**
+     * @param TranslatorInterface $translator
+     * @param $array_modules
+     * @return array
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function modulesName(TranslatorInterface $translator, $array_modules)
     {
         $array = [];
@@ -98,6 +109,12 @@ class phrasea
         return $array;
     }
 
+    /**
+     * @param Application $app
+     * @param $base_id
+     * @return bool|int
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function sbasFromBas(Application $app, $base_id)
     {
         /** @var CollectionReferenceRepository $repository */
@@ -111,6 +128,13 @@ class phrasea
         return false;
     }
 
+    /**
+     * @param $sbas_id
+     * @param $coll_id
+     * @param Application $app
+     * @return bool|int
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function baseFromColl($sbas_id, $coll_id, Application $app)
     {
         /** @var CollectionReferenceRepository $repository */
@@ -124,6 +148,10 @@ class phrasea
         return false;
     }
 
+    /**
+     * @param appbox $appbox
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function reset_baseDatas(appbox $appbox)
     {
         self::$_coll2bas = self::$_bas2coll = self::$_bas_labels = self::$_bas2sbas = null;
@@ -139,6 +167,10 @@ class phrasea
         return;
     }
 
+    /**
+     * @param appbox $appbox
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function reset_sbasDatas(appbox $appbox)
     {
         self::$_sbas_names = self::$_sbas_labels = self::$_sbas_params = self::$_bas2sbas = null;
@@ -154,6 +186,12 @@ class phrasea
         return;
     }
 
+    /**
+     * @param Application $app
+     * @param $base_id
+     * @return bool|int
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function collFromBas(Application $app, $base_id)
     {
         /** @var CollectionReferenceRepository $repository */
@@ -167,6 +205,12 @@ class phrasea
         return false;
     }
 
+    /**
+     * @param $sbas_id
+     * @param Application $app
+     * @return string
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function sbas_names($sbas_id, Application $app)
     {
         if (!self::$_sbas_names) {
@@ -183,6 +227,12 @@ class phrasea
         return isset(self::$_sbas_names[$sbas_id]) ? self::$_sbas_names[$sbas_id] : 'Unknown base';
     }
 
+    /**
+     * @param $sbas_id
+     * @param Application $app
+     * @return string
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function sbas_labels($sbas_id, Application $app)
     {
         if (!self::$_sbas_labels) {
@@ -208,6 +258,12 @@ class phrasea
         return 'Unknown database';
     }
 
+    /**
+     * @param $base_id
+     * @param Application $app
+     * @return string
+     * @deprecated I don't know who wrote this, nor why
+     */
     public static function bas_labels($base_id, Application $app)
     {
         /** @var CollectionReferenceRepository $repository */

@@ -580,8 +580,6 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->getReferenceRepository()->save($this->reference);
         $this->collectionRepositoryRegistry->purgeRegistry();
 
-        cache_databox::update($this->app, $this->databox->get_sbas_id(), 'structure');
-        
 	    $this->dispatch(CollectionEvents::DISABLED, new DisabledEvent($this));
 	
         return $this;
@@ -597,8 +595,6 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->getReferenceRepository()->save($this->reference);
         $this->collectionRepositoryRegistry->purgeRegistry();
 
-        cache_databox::update($this->app, $this->databox->get_sbas_id(), 'structure');
-        
 	    $this->dispatch(CollectionEvents::ENABLED, new EnabledEvent($this));
 	
         return $this;

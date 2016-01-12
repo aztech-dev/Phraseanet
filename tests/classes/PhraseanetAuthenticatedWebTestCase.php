@@ -11,6 +11,7 @@ use Symfony\Component\DomCrawler\Crawler;
 
 abstract class PhraseanetAuthenticatedWebTestCase extends \PhraseanetAuthenticatedTestCase
 {
+
     private static $createdDataboxes = [];
 
     /**
@@ -87,21 +88,21 @@ abstract class PhraseanetAuthenticatedWebTestCase extends \PhraseanetAuthenticat
         $info = $app['phraseanet.configuration']['main']['database'];
 
         try {
-            $conn = $app['connection.pool.manager']->get([
+            $connection = $app['dbal.provider']([
                 'host'     => $info['host'],
                 'port'     => $info['port'],
                 'user'     => $info['user'],
                 'password' => $info['password'],
                 'dbname'   => 'unit_test_db',
             ]);
-            $conn->connect();
+            $connection->connect();
         } catch (DBALException $e) {
             $this->markTestSkipped('Could not reach DB');
         }
 
         $databox = \databox::create(
             $app,
-            $conn,
+            $connection,
             new \SplFileInfo($app['root.path'] . '/lib/conf.d/data_templates/fr-simple.xml')
         );
 

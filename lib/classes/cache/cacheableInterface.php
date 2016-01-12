@@ -9,6 +9,9 @@
  * file that was distributed with this source code.
  */
 
+/**
+ * @deprecated Useless interface, will be removed sooner than later.
+ */
 interface cache_cacheableInterface
 {
 
@@ -19,4 +22,5 @@ interface cache_cacheableInterface
     public function set_data_to_cache($value, $option = null, $duration = 0);
 
     public function delete_data_from_cache($option = null);
+
 }

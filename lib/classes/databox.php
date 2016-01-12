@@ -319,8 +319,6 @@ class databox extends base implements ThumbnailedElement
         $this->delete_data_from_cache(self::CACHE_STRUCTURE);
         $this->delete_data_from_cache(self::CACHE_META_STRUCT);
 
-        cache_databox::update($this->app, $this->id, 'structure');
-
         $this->databoxRepository->save($this);
 
         $this->app['dispatcher']->dispatch(
@@ -592,7 +590,6 @@ class databox extends base implements ThumbnailedElement
         $stmt->closeCursor();
 
         $this->get_appbox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
-        cache_databox::update($this->app, $this->id, 'structure');
 
         $this->viewname = $viewname;
         $this->databoxRepository->save($this);
