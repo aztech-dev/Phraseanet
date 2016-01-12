@@ -35,7 +35,7 @@ fi
 ./bin/setup system:install --env=test --email=test@phraseanet.com --password=test --db-user=root --db-template=en --db-password=toor --databox=db_test --appbox=ab_test --server-name=http://127.0.0.1 -y $VERBOSITY
 case "$INSTALL_MODE" in
     update)
-        ./bin/developer ini:reset --email=test@phraseanet.com --password=test --run-patches --no-setup-dbs $VERBOSITY
+        ./bin/developer ini:reset --env=test --email=test@phraseanet.com --password=test --run-patches --no-setup-dbs $VERBOSITY
         php resources/hudson/cleanupSubdefs.php $VERBOSITY
         ;;
     install)

@@ -141,49 +141,28 @@ abstract class base implements cache_cacheableInterface
         return $this->app['cache'];
     }
 
+    /**
+     * @deprecated App is faster without cache
+     */
     public function get_data_from_cache($option = null)
     {
-        if ($this->get_base_type() == self::DATA_BOX) {
-            \cache_databox::refresh($this->app, $this->id);
-        }
-
-        $data = $this->get_cache()->get($this->get_cache_key($option));
-
-        if (is_object($data) && method_exists($data, 'hydrate')) {
-            $data->hydrate($this->app);
-        }
-
-        return $data;
+        return false;
     }
 
+    /**
+     * @deprecated App is faster without cache
+     */
     public function set_data_to_cache($value, $option = null, $duration = 0)
     {
-        return $this->get_cache()->save($this->get_cache_key($option), $value, $duration);
+        return false;
     }
 
+    /**
+     * @deprecated App is faster without cache
+     */
     public function delete_data_from_cache($option = null)
     {
-        $appbox = $this->get_base_type() == self::APPLICATION_BOX ? $this : $this->get_appbox();
-
-        if ($option === appbox::CACHE_LIST_BASES) {
-            $keys = [$this->get_cache_key(appbox::CACHE_LIST_BASES)];
-
-            phrasea::reset_sbasDatas($appbox);
-            phrasea::reset_baseDatas($appbox);
-            phrasea::clear_sbas_params($this->app);
-
-            return $this->get_cache()->deleteMulti($keys);
-        }
-
-        if (is_array($option)) {
-            foreach ($option as $key => $value) {
-                $option[$key] = $this->get_cache_key($value);
-            }
-
-            return $this->get_cache()->deleteMulti($option);
-        } else {
-            return $this->get_cache()->delete($this->get_cache_key($option));
-        }
+        return false;
     }
 
     public function get_version()

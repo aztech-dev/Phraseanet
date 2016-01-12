@@ -3619,8 +3619,6 @@
             <type>int(11) unsigned</type>
             <null></null>
             <extra></extra>
-
-
             <default>0</default>
             <comment></comment>
           </field>
@@ -3634,33 +3632,26 @@
           </field>
           <field>
             <name>parent_record_id</name>
-
             <type>int(11) unsigned</type>
             <null></null>
             <extra></extra>
-
             <default>0</default>
             <comment></comment>
           </field>
           <field>
-
             <name>status</name>
             <type>int(10) unsigned</type>
             <null></null>
             <extra></extra>
-
             <default>0</default>
             <comment></comment>
-
           </field>
           <field>
             <name>sha256</name>
             <type>char(64)</type>
             <null>YES</null>
             <extra></extra>
-
             <default></default>
-
             <comment></comment>
             <collation>ascii_bin</collation>
           </field>
@@ -3669,49 +3660,31 @@
             <type>char(36)</type>
             <null>YES</null>
             <extra></extra>
-
             <default></default>
-
             <comment></comment>
             <collation>ascii_general_ci</collation>
-          </field>
-          <field>
-            <name>xml</name>
-            <type>longblob</type>
-            <null></null>
-            <extra></extra>
-
-
-            <default></default>
-            <comment></comment>
           </field>
           <field>
             <name>moddate</name>
             <type>datetime</type>
             <null></null>
             <extra></extra>
-
-
             <default>0000-00-00 00:00:00</default>
             <comment></comment>
           </field>
           <field>
             <name>credate</name>
             <type>datetime</type>
-
             <null></null>
             <extra></extra>
-
             <default>0000-00-00 00:00:00</default>
             <comment></comment>
           </field>
           <field>
             <name>work</name>
-
             <type>int(1) unsigned</type>
             <null></null>
             <extra></extra>
-
             <default>0</default>
             <comment></comment>
           </field>
@@ -3728,8 +3701,6 @@
             <type>enum('image','video','audio','document','flash','unknown')</type>
             <null></null>
             <extra></extra>
-
-
             <default>unknown</default>
             <comment></comment>
             <collation>ascii_bin</collation>
@@ -3739,16 +3710,7 @@
             <type>int(11) unsigned</type>
             <null></null>
             <extra></extra>
-
             <default>0</default>
-            <comment></comment>
-          </field>
-          <field>
-            <name>bitly</name>
-            <type>char(10)</type>
-            <null>YES</null>
-            <extra></extra>
-            <default></default>
             <comment></comment>
           </field>
           <field>
@@ -3808,13 +3770,6 @@
             <type>INDEX</type>
             <fields>
               <field>uuid</field>
-            </fields>
-          </index>
-          <index>
-            <name>bitly</name>
-            <type>INDEX</type>
-            <fields>
-              <field>bitly</field>
             </fields>
           </index>
           <index>

@@ -352,8 +352,7 @@ abstract class PhraseanetTestCase extends WebTestCase
     protected function loadDb($app)
     {
         // copy db.ref.sqlite to db.sqlite to re-initialize db with empty values
-        $app['filesystem']->copy($app['db.fixture.info']['path'], $app['db.test.info']['path'], true);
-
+        //$app['filesystem']->copy($app['db.fixture.info']['path'], $app['db.test.info']['path'], true);
     }
 
     protected function addMocks(Application $app)
@@ -379,11 +378,6 @@ abstract class PhraseanetTestCase extends WebTestCase
         $app['translator'] = $this->createTranslatorMock();
 
         $app['phraseanet.SE.subscriber'] = new PhraseanetSeTestSubscriber();
-
-        $app['orm.em'] = $app->extend('orm.em', function($em, $app) {
-
-            return $app['orm.ems'][$app['db.test.hash.key']];
-        });
 
         $app['browser'] = $app->share($app->extend('browser', function ($browser) {
             $browser->setUserAgent(self::USER_AGENT_FIREFOX8MAC);
@@ -413,9 +407,6 @@ abstract class PhraseanetTestCase extends WebTestCase
         \thesaurus_xpath::purge();
 
         self::deleteResources();
-
-        // close all connection
-        self::$DI['app']['connection.pool.manager']->closeAll();
 
         /**
          * Kris Wallsmith pro-tip
