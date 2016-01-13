@@ -47,17 +47,21 @@ class DataboxService
     /**
      * @param Application $application
      * @param DataboxRepository $databoxRepository
+     * @param EventDispatcherInterface $dispatcher
      */
-    public function __construct(Application $application, DataboxRepository $databoxRepository)
-    {
+    public function __construct(
+        Application $application,
+        DataboxRepository $databoxRepository,
+        EventDispatcherInterface $dispatcher
+    ) {
         $this->application = $application;
         $this->databoxRepository = $databoxRepository;
+        $this->eventDispatcher = $dispatcher;
         $this->dcFieldProvider = new DublinCoreFieldProvider();
 
         // @todo Constructor injection for following assignments
         $this->applicationBox = $application['phraseanet.appbox'];
         $this->configuration = $application['conf'];
-        $this->eventDispatcher = $application['dispatcher'];
     }
 
     /**
@@ -68,7 +72,7 @@ class DataboxService
      */
     public function createDatabox(Connection $connection, \SplFileInfo $dataTemplate)
     {
-        if ( ! file_exists($dataTemplate->getRealPath())) {
+        if (!file_exists($dataTemplate->getRealPath())) {
             throw new \InvalidArgumentException($dataTemplate->getRealPath() . " does not exist");
         }
 
@@ -219,7 +223,7 @@ class DataboxService
         ]);
         $statement->closeCursor();
 
-        $databoxId = (int) $appConnection->lastInsertId();
+        $databoxId = (int)$appConnection->lastInsertId();
 
         $this->applicationBox->delete_data_from_cache(\appbox::CACHE_LIST_BASES);
 
