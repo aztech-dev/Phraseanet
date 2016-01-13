@@ -133,7 +133,13 @@ class Install extends Command
         /** @var SetupService $service */
         $service = $this->container['setup.service'];
 
-        $service->install($initializeEnvironmentCommand, $appboxInstallCommand, $databoxInstallCommand);
+        $installResult = $service->install($initializeEnvironmentCommand, $appboxInstallCommand, $databoxInstallCommand);
+
+        if (! $installResult->isSuccessful()) {
+            $output->writeln(sprintf("<error>Installation failed: %s</error>", $installResult->getReason()));
+
+            return 1;
+        }
 
         if (null !== $this->getApplication()) {
             $command = $this->getApplication()->find('crossdomain:generate');

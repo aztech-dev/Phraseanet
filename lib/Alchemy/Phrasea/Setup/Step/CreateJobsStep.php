@@ -36,7 +36,7 @@ class CreateJobsStep implements Step
     {
         $this->configuration = $configuration;
         $this->jobFactory = $jobFactory;
-        $this->configuration = $configuration;
+        $this->taskManipulator = $taskManipulator;
     }
 
     public function getName()

@@ -44,7 +44,7 @@ class DataboxServiceProvider implements ServiceProviderInterface
         });
 
         $app['databoxes.service'] = $app->share(function (PhraseaApplication $app) {
-             return new DataboxService($app, $app['repo.databoxes']);
+             return new DataboxService($app, $app['repo.databoxes'], $app['dispatcher']);
         });
     }
 

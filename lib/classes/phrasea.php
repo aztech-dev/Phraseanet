@@ -66,7 +66,7 @@ class phrasea
         $applicationBox = $app->getApplicationBox();
         $appboxConnection = $applicationBox->get_connection();
 
-        $query = 'SELECT sbas_id, host, port, user, pwd, sqlengine as password, dbname FROM sbas';
+        $query = 'SELECT sbas_id, host, port, user, sqlengine, pwd as password, dbname FROM sbas';
 
         $statement = $appboxConnection->prepare($query);
         $statement->execute();
