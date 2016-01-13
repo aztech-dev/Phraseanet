@@ -27,6 +27,11 @@ class CreateAdminUserStep implements Step
         $this->userManipulator = $userManipulator;
     }
 
+    public function getName()
+    {
+        return 'create-admin-user';
+    }
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,

@@ -37,6 +37,11 @@ class CreateConfigurationStep implements Step
         $this->randomGenerator = $randomGenerator;
     }
 
+    public function getName()
+    {
+        return 'create-configuration';
+    }
+
     public function execute(InitializeEnvironmentCommand $initializeEnvironmentCommand, Connection $appboxConnection, Connection $databoxConnection = null)
     {
         $dataPath = realpath($initializeEnvironmentCommand->getDataPath());

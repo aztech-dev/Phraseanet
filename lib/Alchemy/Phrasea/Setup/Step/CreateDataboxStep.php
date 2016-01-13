@@ -69,6 +69,11 @@ class CreateDataboxStep implements Step
         $this->userRepository = $userRepository;
     }
 
+    public function getName()
+    {
+        return 'create-databox';
+    }
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,

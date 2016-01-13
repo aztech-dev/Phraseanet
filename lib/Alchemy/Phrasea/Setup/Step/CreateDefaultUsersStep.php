@@ -20,6 +20,11 @@ class CreateDefaultUsersStep implements Step
         $this->userManipulator = $userManipulator;
     }
 
+    public function getName()
+    {
+        return 'create-default-users';
+    }
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,

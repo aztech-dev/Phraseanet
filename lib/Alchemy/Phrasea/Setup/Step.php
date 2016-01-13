@@ -7,6 +7,8 @@ use Doctrine\DBAL\Connection;
 
 interface Step
 {
+    public function getName();
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,

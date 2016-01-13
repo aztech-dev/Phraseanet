@@ -80,6 +80,12 @@ class SetupService
             $this->dispatcher->dispatch(PhraseaEvents::INSTALL_FINISH, new InstallFinishEvent());
         }
         catch (Exception $exception) {
+            $this->stepRegistry->getRollbackStep()->execute(
+                $initializeEnvironmentCommand,
+                $appboxConnection,
+                $databoxConnection
+            );
+
             return new InstallCommandResult(false, 'an error occured : %message%', [
                 '%message%' =>$exception->getMessage()
             ]);

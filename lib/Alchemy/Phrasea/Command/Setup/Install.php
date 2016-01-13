@@ -12,6 +12,10 @@
 namespace Alchemy\Phrasea\Command\Setup;
 
 use Alchemy\Phrasea\Command\Command;
+use Alchemy\Phrasea\Exception\RuntimeException;
+use Alchemy\Phrasea\Setup\Command\InitializeEnvironmentCommand;
+use Alchemy\Phrasea\Setup\Command\InstallCommand;
+use Alchemy\Phrasea\Setup\SetupService;
 use Doctrine\DBAL\Driver\Connection;
 use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -22,6 +26,34 @@ use Symfony\Component\Process\ExecutableFinder;
 
 class Install extends Command
 {
+
+    const WELCOME_MESSAGE = "<comment>
+                                                      ,-._.-._.-._.-._.-.
+                                                      `-.             ,-'
+ .----------------------------------------------.       |             |
+|                                                |      |             |
+|  Hello !                                       |      |             |
+|                                                |      |             |
+|  You are on your way to install Phraseanet,    |     ,';\".________.-.
+|  You will need access to 2 MySQL databases.    |     ;';_'         )]
+|                                                |    ;             `-|
+|                                                `.    `T-            |
+ `----------------------------------------------._ \    |             |
+                                                  `-;   |             |
+                                                        |..________..-|
+                                                       /\/ |________..|
+                                                  ,'`./  >,(           |
+                                                  \_.-|_/,-/   ii  |   |
+                                                   `.\"' `-/  .-\"\"\"||    |
+                                                    /`^\"-;   |    ||____|
+                                                   /     /   `.__/  | ||
+                                                        /           | ||
+                                                                    | ||
+</comment>";
+
+    /**
+     * @var ExecutableFinder
+     */
     private $executableFinder;
 
     public function __construct($name = null)
@@ -57,48 +89,27 @@ class Install extends Command
         /** @var DialogHelper $dialog */
         $dialog = $this->getHelperSet()->get('dialog');
 
-        $output->writeln("<comment>
-                                                      ,-._.-._.-._.-._.-.
-                                                      `-.             ,-'
- .----------------------------------------------.       |             |
-|                                                |      |             |
-|  Hello !                                       |      |             |
-|                                                |      |             |
-|  You are on your way to install Phraseanet,    |     ,';\".________.-.
-|  You will need access to 2 MySQL databases.    |     ;';_'         )]
-|                                                |    ;             `-|
-|                                                `.    `T-            |
- `----------------------------------------------._ \    |             |
-                                                  `-;   |             |
-                                                        |..________..-|
-                                                       /\/ |________..|
-                                                  ,'`./  >,(           |
-                                                  \_.-|_/,-/   ii  |   |
-                                                   `.\"' `-/  .-\"\"\"||    |
-                                                    /`^\"-;   |    ||____|
-                                                   /     /   `.__/  | ||
-                                                        /           | ||
-                                                                    | ||
-</comment>"
-        );
+        $output->writeln(self::WELCOME_MESSAGE);
 
         if (!$input->getOption('yes') && !$input->getOption('appbox')) {
             $continue = $dialog->askConfirmation($output, 'Do you have these two DB handy ? (N/y)', false);
 
-            if (!$continue) {
+            if (! $continue) {
                 $output->writeln("See you later !");
 
                 return 0;
             }
         }
 
-        $abConn = $this->getAppboxInstallCommand($input, $output, $dialog);
+        $appboxInstallCommand = $this->getAppboxInstallCommand($input, $output, $dialog);
+        $databoxInstallCommand = $this->getDataboxInstallCommand($input, $output, $appboxInstallCommand, $dialog);
+        $template = null;
 
-        list($dbConn, $template) = $this->getDBConn($input, $output, $abConn, $dialog);
+        if ($databoxInstallCommand) {
+            $template = $this->getDataboxTemplate($input, $output, $dialog);
+        }
+
         list($email, $password) = $this->getCredentials($input, $output, $dialog);
-
-        $dataPath = $this->getDataPath($input, $output, $dialog);
-        $serverName = $this->getServerName($input, $output, $dialog);
 
         if (!$input->getOption('yes')) {
             $continue = $dialog->askConfirmation($output, "<question>Phraseanet is going to be installed, continue ? (N/y)</question>", false);
@@ -110,7 +121,19 @@ class Install extends Command
             }
         }
 
-        $this->container['phraseanet.installer']->install($email, $password, $abConn, $serverName, $dataPath, $dbConn, $template, $this->detectBinaries());
+        $initializeEnvironmentCommand = new InitializeEnvironmentCommand(
+            $email,
+            $password,
+            $template,
+            $this->getDataPath($input, $output, $dialog),
+            $this->getServerName($input, $output, $dialog),
+            $this->detectBinaries()
+        );
+
+        /** @var SetupService $service */
+        $service = $this->container['setup.service'];
+
+        $service->install($initializeEnvironmentCommand, $appboxInstallCommand, $databoxInstallCommand);
 
         if (null !== $this->getApplication()) {
             $command = $this->getApplication()->find('crossdomain:generate');
@@ -120,13 +143,11 @@ class Install extends Command
         }
 
         $output->writeln("<info>Install successful !</info>");
-
-        return;
     }
 
     private function getAppboxInstallCommand(InputInterface $input, OutputInterface $output, DialogHelper $dialog)
     {
-        $abConn = $info = null;
+        $info = null;
 
         if (!$input->getOption('appbox')) {
             $output->writeln("\n<info>--- Database credentials ---</info>\n");
@@ -145,14 +166,7 @@ class Install extends Command
                     'password' => $dbPassword,
                     'dbname'   => $abName,
                 ];
-                try {
-                    $abConn = $this->container['dbal.provider']($info);
-                    $abConn->connect();
-                    $output->writeln("\n\t<info>Application-Box : Connection successful !</info>\n");
-                } catch (\Exception $e) {
-                    $output->writeln("\n\t<error>Invalid connection parameters</error>\n");
-                }
-            } while (!$abConn);
+            } while (! $this->testConnection($output, 'Application-Box', $info));
         } else {
             $info = [
                 'host'     => $input->getOption('db-host'),
@@ -162,49 +176,40 @@ class Install extends Command
                 'dbname'   => $input->getOption('appbox'),
             ];
 
-            $abConn = $this->container['dbal.provider']($info);
-            $abConn->connect();
-            $output->writeln("\n\t<info>Application-Box : Connection successful !</info>\n");
+            if (! $this->testConnection($output, 'Application-Box', $info)) {
+                throw new RuntimeException('Invalid application box settings');
+            }
         }
 
-        return $abConn;
+        return new InstallCommand($info['host'], $info['port'], $info['user'], $info['password'], $info['dbname']);
     }
 
-    private function getDBConn(InputInterface $input, OutputInterface $output, Connection $abConn, DialogHelper $dialog)
-    {
-        $dbConn = $template = $info = null;
+    private function getDataboxInstallCommand(
+        InputInterface $input,
+        OutputInterface $output,
+        InstallCommand $applicationBoxInstallCommand,
+        DialogHelper $dialog
+    ) {
+        $databoxInstallCommand = null;
 
         if (!$input->getOption('databox')) {
             do {
-                $retry = false;
                 $dbName = $dialog->ask($output, 'DataBox name, will not be created if empty : ', null);
 
                 if ($dbName) {
-                    try {
-                        $info = [
-                            'host'     => $abConn->getHost(),
-                            'port'     => $abConn->getPort(),
-                            'user'     => $abConn->getUsername(),
-                            'password' => $abConn->getPassword(),
-                            'dbname'   => $dbName,
-                        ];
-
-                        $dbConn = $this->container['dbal.provider']($info);
-                        $dbConn->connect();
-                        $output->writeln("\n\t<info>Data-Box : Connection successful !</info>\n");
-
-                        do {
-                            $template = $dialog->ask($output, 'Choose a language template for metadata structure, available are fr (french) and en (english) (en) : ', 'en');
-                        } while (!in_array($template, ['en', 'fr']));
-
-                        $output->writeln("\n\tLanguage selected is <info>'$template'</info>\n");
-                    } catch (\Exception $e) {
-                        $retry = true;
-                    }
+                    $info = [
+                        'host' => $applicationBoxInstallCommand->getDatabaseHost(),
+                        'port' => $applicationBoxInstallCommand->getDatabasePort(),
+                        'user' => $applicationBoxInstallCommand->getDatabaseUser(),
+                        'password' => $applicationBoxInstallCommand->getDatabasePassword(),
+                        'dbname' => $dbName,
+                    ];
                 } else {
                     $output->writeln("\n\tNo databox will be created\n");
+
+                    return null;
                 }
-            } while ($retry);
+            } while (! $this->testConnection($output, 'Data-Box', $info));
         } else {
             $info = [
                 'host'     => $input->getOption('db-host'),
@@ -214,13 +219,30 @@ class Install extends Command
                 'dbname'   => $input->getOption('databox'),
             ];
 
-            $dbConn = $this->container['dbal.provider']($info);
-            $dbConn->connect();
-            $output->writeln("\n\t<info>Data-Box : Connection successful !</info>\n");
+            if (! $this->testConnection($output, 'Data-Box', $info)) {
+                throw new RuntimeException('Invalid databox settings');
+            }
+        }
+
+        return new InstallCommand($info['host'], $info['port'], $info['user'], $info['password'], $info['dbname']);
+    }
+
+    private function getDataboxTemplate(InputInterface $input, OutputInterface $output, DialogHelper $dialog)
+    {
+        if (!$input->getOption('databox')) {
+            do {
+                $template = $dialog->ask($output,
+                    'Choose a language template for metadata structure, available are fr (french) and en (english) (en) : ',
+                    'en');
+            } while (!in_array($template, ['en', 'fr']));
+        }
+        else {
             $template = $input->getOption('db-template') ? : 'en';
         }
 
-        return [$dbConn, $template];
+        $output->writeln("\n\tLanguage selected is <info>'$template'</info>\n");
+
+        return $template;
     }
 
     private function getCredentials(InputInterface $input, OutputInterface $output, DialogHelper $dialog)
@@ -304,5 +326,27 @@ class Install extends Command
             'pdftotext_binary'     => $this->executableFinder->find('pdftotext'),
             'ghostscript_binary'   => $this->executableFinder->find('gs'),
         ];
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @param $connectionType
+     * @param $info
+     * @return mixed
+     */
+    private function testConnection(OutputInterface $output, $connectionType, $info)
+    {
+        try {
+            $abConn = $this->container['dbal.provider']($info);
+            $abConn->connect();
+
+            $output->writeln("\n\t<info>$connectionType : Connection successful !</info>\n");
+        } catch (\Exception $e) {
+            $output->writeln("\n\t<error>Invalid connection parameters</error>\n");
+
+            return false;
+        }
+
+        return true;
     }
 }

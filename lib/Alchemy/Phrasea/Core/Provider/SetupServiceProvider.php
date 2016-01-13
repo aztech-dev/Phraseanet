@@ -45,14 +45,23 @@ class SetupServiceProvider implements ServiceProviderInterface
     {
         $registry = new StepRegistry();
 
-        $registry->addStepFactory(function () use ($app) {
-            return new RollbackInstallationStep($app['configuration.store']);
-        });
+        $rollbackStepFactory = function () use ($app) {
+            static $step;
+
+            if ($step === null) {
+                $step = new RollbackInstallationStep($app['configuration.store']);
+            }
+
+            return $step;
+        };
+
+        $registry->setRollbackStepFactory($rollbackStepFactory);
+        $registry->addStepFactory($rollbackStepFactory);
 
         $registry->addStepFactory(function () use ($app) {
             return new CreateConfigurationStep(
                 $app['configuration.store'],
-                $app['manipulator.registry'],
+                $app['registry.manipulator'],
                 $app['random.medium']);
         });
 
