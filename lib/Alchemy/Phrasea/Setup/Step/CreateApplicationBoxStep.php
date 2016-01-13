@@ -27,6 +27,11 @@ class CreateApplicationBoxStep implements Step
         $this->entityManager = $entityManager;
     }
 
+    public function getName()
+    {
+        return 'create-appbox';
+    }
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,

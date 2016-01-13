@@ -20,12 +20,17 @@ class RollbackInstallationStep implements Step
         $this->hostConfiguration = $hostConfiguration;
     }
 
+    public function getName()
+    {
+        return 'rollback';
+    }
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,
         Connection $databoxConnection = null
     ) {
-        $structure = simplexml_load_file(__DIR__ . "/../../../conf.d/bases_structure.xml");
+        $structure = simplexml_load_file(__DIR__ . "/../../../../conf.d/bases_structure.xml");
 
         if (!$structure) {
             throw new \RuntimeException('Unable to load schema');
@@ -56,12 +61,14 @@ class RollbackInstallationStep implements Step
      */
     private function dropDataboxTables(Connection $databoxConnection, $structure)
     {
-        if ($databoxConnection !== null) {
-            $databox = $structure->databox;
+        if ($databoxConnection === null) {
+            return;
+        }
 
-            foreach ($databox->tables->table as $table) {
-                $this->dropTable($databoxConnection, $table);
-            }
+        $databox = $structure->databox;
+
+        foreach ($databox->tables->table as $table) {
+            $this->dropTable($databoxConnection, $table);
         }
     }
 

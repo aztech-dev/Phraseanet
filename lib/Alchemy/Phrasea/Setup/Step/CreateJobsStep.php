@@ -39,6 +39,11 @@ class CreateJobsStep implements Step
         $this->configuration = $configuration;
     }
 
+    public function getName()
+    {
+        return 'create-tasks';
+    }
+
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,
