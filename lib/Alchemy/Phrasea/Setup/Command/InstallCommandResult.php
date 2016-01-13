@@ -16,13 +16,20 @@ class InstallCommandResult
     private $reason;
 
     /**
+     * @var string[]
+     */
+    private $reasonContext;
+
+    /**
      * @param bool $success
      * @param string $reason
+     * @param string[] $reasonContext
      */
-    public function __construct($success = true, $reason = '')
+    public function __construct($success = true, $reason = '', $reasonContext = [])
     {
         $this->successful = $success;
         $this->reason = $reason;
+        $this->reasonContext = $reasonContext;
     }
 
     /**
@@ -39,5 +46,13 @@ class InstallCommandResult
     public function getReason()
     {
         return $this->reason;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getReasonContext()
+    {
+        return $this->reasonContext;
     }
 }

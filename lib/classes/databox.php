@@ -286,6 +286,11 @@ class databox extends base implements ThumbnailedElement
         return $this;
     }
 
+    public function createCollection($name, User $owner = null)
+    {
+        return \collection::create($this->app, $this, $this->get_appbox(), $name, $owner);
+    }
+
     /**
      *
      * @param  DOMDocument $dom_struct

@@ -54,6 +54,7 @@ class Install extends Command
      */
     protected function doExecute(InputInterface $input, OutputInterface $output)
     {
+        /** @var DialogHelper $dialog */
         $dialog = $this->getHelperSet()->get('dialog');
 
         $output->writeln("<comment>
@@ -91,10 +92,11 @@ class Install extends Command
             }
         }
 
-        $abConn = $this->getABConn($input, $output, $dialog);
+        $abConn = $this->getAppboxInstallCommand($input, $output, $dialog);
 
         list($dbConn, $template) = $this->getDBConn($input, $output, $abConn, $dialog);
         list($email, $password) = $this->getCredentials($input, $output, $dialog);
+
         $dataPath = $this->getDataPath($input, $output, $dialog);
         $serverName = $this->getServerName($input, $output, $dialog);
 
@@ -122,9 +124,10 @@ class Install extends Command
         return;
     }
 
-    private function getABConn(InputInterface $input, OutputInterface $output, DialogHelper $dialog)
+    private function getAppboxInstallCommand(InputInterface $input, OutputInterface $output, DialogHelper $dialog)
     {
         $abConn = $info = null;
+
         if (!$input->getOption('appbox')) {
             $output->writeln("\n<info>--- Database credentials ---</info>\n");
 
@@ -170,6 +173,7 @@ class Install extends Command
     private function getDBConn(InputInterface $input, OutputInterface $output, Connection $abConn, DialogHelper $dialog)
     {
         $dbConn = $template = $info = null;
+
         if (!$input->getOption('databox')) {
             do {
                 $retry = false;
