@@ -34,7 +34,7 @@ class PhraseaInstallSubscriber implements EventSubscriberInterface
         ];
     }
 
-    public function onInstallFinished(InstallFinishEvent $event)
+    public function onInstallFinished()
     {
         $this->createNavigatorApplication();
         $this->createOfficePluginApplication();

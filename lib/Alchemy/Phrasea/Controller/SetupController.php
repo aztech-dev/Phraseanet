@@ -11,6 +11,7 @@
 namespace Alchemy\Phrasea\Controller;
 
 use Alchemy\Phrasea\Application;
+use Alchemy\Phrasea\Setup\Command\InitializeEnvironmentCommand;
 use Alchemy\Phrasea\Setup\Command\InstallCommand;
 use Alchemy\Phrasea\Setup\RequirementCollectionInterface;
 use Alchemy\Phrasea\Setup\Requirements\BinariesRequirements;
@@ -122,47 +123,44 @@ class SetupController extends Controller
             );
         }
 
-        /** @var SetupService $service */
-        $service = $this->app['setup.service'];
-        $result = $service->install($appboxCommand, $databoxCommand);
-
-        if (! $result->isSuccessful()) {
-            return $this->app->redirectPath('install_step2', [
-                'error' => $this->app->trans($result->getReason()),
-            ]);
-        }
-
         $email = $request->request->get('email');
         $password = $request->request->get('password');
         $template = $request->request->get('db_template');
         $dataPath = $request->request->get('datapath_noweb');
 
-        try {
-            $installer = $this->app['phraseanet.installer'];
+        $binaryData = [
+            'php_binary'         => $request->request->get('binary_php'),
+            'swf_extract_binary' => $request->request->get('binary_swfextract'),
+            'pdf2swf_binary'     => $request->request->get('binary_pdf2swf'),
+            'swf_render_binary'  => $request->request->get('binary_swfrender'),
+            'unoconv_binary'     => $request->request->get('binary_unoconv'),
+            'ffmpeg_binary'      => $request->request->get('binary_ffmpeg'),
+            'mp4box_binary'      => $request->request->get('binary_MP4Box'),
+            'pdftotext_binary'   => $request->request->get('binary_xpdf'),
+        ];
 
-            $binaryData = [
-                'php_binary'         => $request->request->get('binary_php'),
-                'swf_extract_binary' => $request->request->get('binary_swfextract'),
-                'pdf2swf_binary'     => $request->request->get('binary_pdf2swf'),
-                'swf_render_binary'  => $request->request->get('binary_swfrender'),
-                'unoconv_binary'     => $request->request->get('binary_unoconv'),
-                'ffmpeg_binary'      => $request->request->get('binary_ffmpeg'),
-                'mp4box_binary'      => $request->request->get('binary_MP4Box'),
-                'pdftotext_binary'   => $request->request->get('binary_xpdf'),
-            ];
+        $initializeEnvironmentCommand = new InitializeEnvironmentCommand(
+            $email,
+            $password,
+            $template,
+            $dataPath,
+            $servername,
+            $binaryData
+        );
 
-            $user = $installer->install($email, $password, $abConn, $servername, $dataPath, $dbConn, $template, $binaryData);
+        /** @var SetupService $service */
+        $service = $this->app['setup.service'];
+        $result = $service->install($initializeEnvironmentCommand, $appboxCommand, $databoxCommand);
 
-            $this->app->getAuthenticator()->openAccount($user);
-
-            return $this->app->redirectPath('admin', [
-                'section' => 'taskmanager',
-                'notice'  => 'install_success',
-            ]);
-        } catch (\Exception $e) {
+        if (! $result->isSuccessful()) {
             return $this->app->redirectPath('install_step2', [
-                'error' => $this->app->trans('an error occured : %message%', ['%message%' => $e->getMessage()]),
+                'error' => $this->app->trans($result->getReason(), $result->getReasonContext()),
             ]);
         }
+
+        return $this->app->redirectPath('admin', [
+            'section' => 'taskmanager',
+            'notice'  => 'install_success',
+        ]);
     }
 }

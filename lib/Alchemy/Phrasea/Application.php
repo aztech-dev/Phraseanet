@@ -64,6 +64,7 @@ use Alchemy\Phrasea\Core\Provider\RepositoriesServiceProvider;
 use Alchemy\Phrasea\Core\Provider\SearchEngineServiceProvider;
 use Alchemy\Phrasea\Core\Provider\SerializerServiceProvider;
 use Alchemy\Phrasea\Core\Provider\SessionHandlerServiceProvider;
+use Alchemy\Phrasea\Core\Provider\SetupServiceProvider;
 use Alchemy\Phrasea\Core\Provider\StatusServiceProvider;
 use Alchemy\Phrasea\Core\Provider\SubdefServiceProvider;
 use Alchemy\Phrasea\Core\Provider\TasksServiceProvider;
@@ -209,6 +210,7 @@ class Application extends SilexApplication
         $this->register(new CSVServiceProvider());
         $this->register(new DataboxServiceProvider());
         $this->register(new RegistrationServiceProvider());
+        $this->register(new SetupServiceProvider());
         $this->register(new ImagineServiceProvider());
         $this->setUpImagine();
         $this->register(new JMSSerializerServiceProvider());

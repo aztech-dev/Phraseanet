@@ -11,20 +11,9 @@
 
 namespace Alchemy\Phrasea\Core\Event;
 
-use Alchemy\Phrasea\Model\Entities\User;
 use Symfony\Component\EventDispatcher\Event as SfEvent;
 
 class InstallFinishEvent extends SfEvent
 {
-    private $user;
 
-    public function __construct(User $user)
-    {
-        $this->user = $user;
-    }
-
-    public function getUser()
-    {
-        return $this->user;
-    }
 }

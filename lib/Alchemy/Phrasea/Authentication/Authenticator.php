@@ -58,13 +58,10 @@ class Authenticator
     }
 
     /**
-     * Open user session
+     * Opens a user session
      *
      * @param User $user
-     *
      * @return Session
-     *
-     * @throws \Exception_InternalServerError
      */
     public function openAccount(User $user)
     {
