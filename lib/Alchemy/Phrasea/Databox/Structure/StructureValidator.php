@@ -48,13 +48,13 @@ class StructureValidator
                 $subdefName = trim(mb_strtolower((string) $subdef->attributes()->name));
                 $subdefClass = trim(mb_strtolower((string) $subdef->attributes()->class));
 
-                if ($subdefName == '' || isset($availableSubdefs[$subdefGroupName][$subdefName])) {
+                if ($this->nameIsAlreadyUsed($subdefName, $availableSubdefs, $subdefGroupName)) {
                     $errors->addErrorMessage(self::NON_UNIQUE_NAME);
 
                     continue;
                 }
 
-                if ( ! in_array($subdefClass, ['thumbnail', 'preview', 'document'])) {
+                if ($this->subdefClassIsNotValid($subdefClass)) {
                     $errors->addErrorMessage(self::INVALID_SUBDEF_CLASS);
 
                     continue;
@@ -65,5 +65,25 @@ class StructureValidator
         }
 
         return $errors;
+    }
+
+    /**
+     * @param $subdefName
+     * @param $availableSubdefs
+     * @param $subdefGroupName
+     * @return bool
+     */
+    private function nameIsAlreadyUsed($subdefName, $availableSubdefs, $subdefGroupName)
+    {
+        return $subdefName == '' || isset($availableSubdefs[$subdefGroupName][$subdefName]);
+    }
+
+    /**
+     * @param $subdefClass
+     * @return bool
+     */
+    private function subdefClassIsNotValid($subdefClass)
+    {
+        return !in_array($subdefClass, ['thumbnail', 'preview', 'document']);
     }
 }
