@@ -5,7 +5,7 @@ namespace Alchemy\Phrasea\Databox\Process\Unmount;
 use Alchemy\Phrasea\Core\Configuration\PropertyAccess;
 use Doctrine\DBAL\Connection;
 
-class DeleteDataboxReferencesStep implements Step
+class DeleteDataboxReferencesStep implements UnmountStep
 {
     /**
      * @var PropertyAccess

@@ -10,6 +10,7 @@
 namespace Alchemy\Phrasea\Databox;
 
 use Doctrine\Common\Cache\Cache;
+use Doctrine\DBAL\Connection;
 
 final class CachingDataboxRepository implements DataboxRepository
 {
@@ -75,5 +76,18 @@ final class CachingDataboxRepository implements DataboxRepository
         }
 
         $this->cache->save($this->cacheKey, $rows);
+    }
+
+    /**
+     * @param Connection $connection
+     * @return \databox
+     */
+    public function mount(Connection $connection)
+    {
+        $databox = $this->repository->mount($connection);
+
+        $this->cache->delete($this->cacheKey);
+
+        return $databox;
     }
 }

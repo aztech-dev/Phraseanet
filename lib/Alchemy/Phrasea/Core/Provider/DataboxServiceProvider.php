@@ -7,11 +7,11 @@ use Alchemy\Phrasea\Databox\CachingDataboxRepository;
 use Alchemy\Phrasea\Databox\DataboxFactory;
 use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Databox\DbalDataboxRepository;
-use Alchemy\Phrasea\Databox\Process\Unmount\DeleteDataboxEntitiesStep;
-use Alchemy\Phrasea\Databox\Process\Unmount\DeleteDataboxReferencesStep;
-use Alchemy\Phrasea\Databox\Process\Unmount\DeleteUserRightsStep;
-use Alchemy\Phrasea\Databox\Process\Unmount\StepRegistry;
-use Alchemy\Phrasea\Databox\Process\Unmount\UnmountCollectionsStep;
+use Alchemy\Phrasea\Databox\Process\Create;
+use Alchemy\Phrasea\Databox\Process\DataboxProcessRegistry;
+use Alchemy\Phrasea\Databox\Process\StepRegistry;
+use Alchemy\Phrasea\Databox\Process\Mount;
+use Alchemy\Phrasea\Databox\Process\Unmount;
 use Silex\Application;
 use Silex\ServiceProviderInterface;
 
@@ -49,26 +49,76 @@ class DataboxServiceProvider implements ServiceProviderInterface
         });
 
         $app['databoxes.service'] = $app->share(function (PhraseaApplication $app) {
-            $unmountStepRegistry = $this->buildStepRegistry($app);
+            $process = new DataboxProcessRegistry();
 
-            return new DataboxService($app, $app['repo.databoxes'], $app['dispatcher'], $unmountStepRegistry);
+            $process->registerProcess(Create\CreateStep::class, $this->buildCreateStepRegisty($app));
+            $process->registerProcess(Mount\MountStep::class, $this->buildMountStepRegistry($app));
+            $process->registerProcess(Unmount\UnmountStep::class, $this->buildUnmountStepRegistry($app));
+
+            return new DataboxService($app, $app['repo.databoxes'], $app['dispatcher'], $process);
         });
     }
 
-    private function buildStepRegistry(PhraseaApplication $app)
+    private function buildCreateStepRegisty(PhraseaApplication $app)
     {
         $registry = new StepRegistry();
 
         $registry->addStepFactory(function () {
-            return new UnmountCollectionsStep();
+            return new Create\ValidateDataTemplateStep();
         });
 
         $registry->addStepFactory(function () use ($app) {
-            return new DeleteUserRightsStep($app, $app->getAclProvider());
+           return new Create\ValidateDataboxConnectionStep($app->getApplicationBox());
+        });
+
+        $registry->addStepFactory(function () {
+           return new Create\CreateDatabaseForDataboxStep();
+        });
+
+        $registry->addStepFactory(function () {
+            return new Create\SetCurrentDatabaseStep();
         });
 
         $registry->addStepFactory(function () use ($app) {
-            return new DeleteDataboxEntitiesStep(
+            return new Create\PopulateDataboxStep($app['conf']);
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new Create\CreateDataboxStep($app->getApplicationBox(), $app['repo.databoxes']);
+        });
+
+        return $registry;
+    }
+
+    private function buildMountStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () use ($app) {
+            return new Mount\ValidateDataboxConnectionStep($app->getApplicationBox());
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new Mount\MountDataboxStep($app->getApplicationBox(), $app['repo.databoxes']);
+        });
+
+        return $registry;
+    }
+
+    private function buildUnmountStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () {
+            return new Unmount\UnmountCollectionsStep();
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new Unmount\DeleteUserRightsStep($app, $app->getAclProvider());
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new Unmount\DeleteDataboxEntitiesStep(
                 $app,
                 $app['orm.em'],
                 $app['repo.story-wz'],
@@ -77,7 +127,7 @@ class DataboxServiceProvider implements ServiceProviderInterface
         });
 
         $registry->addStepFactory(function () use ($app) {
-            return new DeleteDataboxReferencesStep($app->getApplicationBox(), $app['conf']);
+            return new Unmount\DeleteDataboxReferencesStep($app->getApplicationBox(), $app['conf']);
         });
 
         return $registry;
@@ -94,6 +144,6 @@ class DataboxServiceProvider implements ServiceProviderInterface
      */
     public function boot(Application $app)
     {
-        // TODO: Implement boot() method.
+        $app['databoxes.repo'] = $app['repo.databoxes'];
     }
 }
