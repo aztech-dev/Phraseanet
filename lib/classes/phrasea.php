@@ -149,41 +149,19 @@ class phrasea
     }
 
     /**
-     * @param appbox $appbox
      * @deprecated I don't know who wrote this, nor why
      */
-    public static function reset_baseDatas(appbox $appbox)
+    public static function reset_baseDatas()
     {
         self::$_coll2bas = self::$_bas2coll = self::$_bas_labels = self::$_bas2sbas = null;
-        $appbox->delete_data_from_cache(
-            [
-                self::CACHE_BAS_2_COLL
-                , self::CACHE_BAS_2_COLL
-                , self::CACHE_BAS_LABELS
-                , self::CACHE_SBAS_FROM_BAS
-            ]
-        );
-
-        return;
     }
 
     /**
-     * @param appbox $appbox
      * @deprecated I don't know who wrote this, nor why
      */
-    public static function reset_sbasDatas(appbox $appbox)
+    public static function reset_sbasDatas()
     {
         self::$_sbas_names = self::$_sbas_labels = self::$_sbas_params = self::$_bas2sbas = null;
-        $appbox->delete_data_from_cache(
-            [
-                self::CACHE_SBAS_NAMES,
-                self::CACHE_SBAS_LABELS,
-                self::CACHE_SBAS_FROM_BAS,
-                self::CACHE_SBAS_PARAMS,
-            ]
-        );
-
-        return;
     }
 
     /**

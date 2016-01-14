@@ -2,7 +2,7 @@
 
 namespace Alchemy\Phrasea\Databox\Process\Unmount;
 
-class UnmountCollectionsStep implements Step
+class UnmountCollectionsStep implements UnmountStep
 {
 
     public function execute(\databox $databox)

@@ -9,8 +9,16 @@
  */
 namespace Alchemy\Phrasea\Databox;
 
+use Doctrine\DBAL\Connection;
+
 interface DataboxRepository
 {
+    /**
+     * @param Connection $connection
+     * @return \databox
+     */
+    public function mount(Connection $connection);
+
     /**
      * @param int $id
      * @return \databox

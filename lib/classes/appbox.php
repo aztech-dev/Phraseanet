@@ -309,8 +309,6 @@ class appbox extends base
         if ($option === appbox::CACHE_LIST_BASES) {
             $this->databoxes = null;
         }
-
-        parent::delete_data_from_cache($option);
     }
 
     public function getCollectionService()

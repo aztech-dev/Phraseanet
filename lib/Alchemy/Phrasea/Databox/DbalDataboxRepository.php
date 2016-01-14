@@ -87,4 +87,48 @@ final class DbalDataboxRepository implements DataboxRepository
 
         return $rows;
     }
+
+    /**
+     * @param Connection $connection
+     * @return \databox
+     * @throws \Doctrine\DBAL\DBALException
+     */
+    public function mount(Connection $connection)
+    {
+        $sql = 'INSERT INTO sbas (sbas_id, ord, host, port, dbname, sqlengine, user, pwd)
+              VALUES (null, :ord, :host, :port, :dbname, "MYSQL", :user, :password)';
+
+        $statement = $this->connection->prepare($sql);
+        $statement->execute([
+            ':ord' => $this->getNewDataboxOrdinal(),
+            ':host' => $connection->getHost(),
+            ':port' => $connection->getPort(),
+            ':dbname' => $connection->getDatabase(),
+            ':user' => $connection->getUsername(),
+            ':password' => $connection->getPassword()
+        ]);
+
+        $statement->closeCursor();
+
+        $databoxId = (int) $this->connection->lastInsertId();
+
+        return $this->find($databoxId);
+    }
+
+
+    /**
+     * @return array
+     * @throws \Doctrine\DBAL\DBALException
+     */
+    private function getNewDataboxOrdinal()
+    {
+        $sql = 'SELECT COALESCE(MAX(ord), 0) + 1 as ord FROM sbas';
+
+        $statement = $this->connection->prepare($sql);
+        $statement->execute();
+
+        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+
+        return $row['ord'];
+    }
 }

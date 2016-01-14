@@ -5,7 +5,7 @@ namespace Alchemy\Phrasea\Databox\Process\Unmount;
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Authentication\ACLProvider;
 
-class DeleteUserRightsStep implements Step
+class DeleteUserRightsStep implements UnmountStep
 {
     /**
      * @var ACLProvider

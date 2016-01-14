@@ -1,8 +1,10 @@
 <?php
 
-namespace Alchemy\Phrasea\Databox\Process\Unmount;
+namespace Alchemy\Phrasea\Databox\Process;
 
-class StepRegistry 
+use Alchemy\Phrasea\Databox\Process\Unmount\UnmountStep;
+
+class StepRegistry
 {
 
     /**
@@ -19,7 +21,7 @@ class StepRegistry
     }
 
     /**
-     * @return \Generator|Step[]
+     * @return \Generator|UnmountStep[]
      */
     public function getSteps()
     {

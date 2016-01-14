@@ -2,8 +2,12 @@
 
 namespace Alchemy\Phrasea\Databox\Process\Unmount;
 
-interface Step 
+interface UnmountStep
 {
 
+    /**
+     * @param \databox $databox
+     * @return void
+     */
     public function execute(\databox $databox);
 }

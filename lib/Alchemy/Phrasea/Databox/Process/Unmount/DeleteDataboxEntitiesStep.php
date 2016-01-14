@@ -7,7 +7,7 @@ use Alchemy\Phrasea\Model\Repositories\BasketElementRepository;
 use Alchemy\Phrasea\Model\Repositories\StoryWZRepository;
 use Doctrine\ORM\EntityManager;
 
-class DeleteDataboxEntitiesStep implements Step
+class DeleteDataboxEntitiesStep implements UnmountStep
 {
 
     /**
