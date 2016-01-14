@@ -10,7 +10,9 @@
 
 namespace Alchemy\Phrasea\Controller\Admin;
 
+use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Controller\Controller;
+use Alchemy\Phrasea\Databox\DataboxService;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DBALException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -19,6 +21,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DataboxesController extends Controller
 {
+
+    /**
+     * @var DataboxService
+     */
+    private $databoxService;
+
+    public function __construct(Application $application, DataboxService $databoxService)
+    {
+        parent::__construct($application);
+
+        $this->databoxService = $databoxService;
+    }
+
     /**
      * Get Databases control panel
      *
@@ -142,7 +157,7 @@ class DataboxesController extends Controller
             }
 
             try {
-                $base = \databox::create($this->app, $connection, $dataTemplate);
+                $base = $this->databoxService->createDatabox($connection, $dataTemplate);
                 $base->registerAdmin($this->getAuthenticator()->getUser());
                 $this->getAclForUser()->delete_data_from_cache();
 
@@ -176,7 +191,7 @@ class DataboxesController extends Controller
                 ]);
                 $connection->connect();
                 try {
-                    $base = \databox::create($this->app, $connection, $data_template);
+                    $base = $this->databoxService->createDatabox($connection, $data_template);
                     $base->registerAdmin($this->getAuthenticator()->getUser());
 
                     return $this->app->redirectPath('admin_database', [
@@ -221,7 +236,7 @@ class DataboxesController extends Controller
                 $password = $connexion['password'];
 
                 $this->app->getApplicationBox()->get_connection()->beginTransaction();
-                $base = \databox::mount($this->app, $hostname, $port, $user, $password, $dbName);
+                $base = $this->databoxService->mountDatabox($hostname, $port, $user, $password, $dbName);
                 $base->registerAdmin($this->app->getAuthenticatedUser());
                 $this->app->getApplicationBox()->get_connection()->commit();
 
@@ -246,7 +261,7 @@ class DataboxesController extends Controller
             $connection = $this->getApplicationBox()->get_connection();
             try {
                 $connection->beginTransaction();
-                $base = \databox::mount($this->app, $hostname, $port, $userDb, $passwordDb, $dbName);
+                $base = $this->databoxService->mountDatabox($hostname, $port, $userDb, $passwordDb, $dbName);
                 $base->registerAdmin($this->getAuthenticator()->getUser());
                 $connection->commit();
 

@@ -12,6 +12,7 @@ namespace Alchemy\Phrasea\Controller\Admin;
 
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Controller\Controller;
+use Alchemy\Phrasea\Databox\Field\DublinCoreFieldProvider;
 use Alchemy\Phrasea\Metadata\TagProvider;
 use Alchemy\Phrasea\Vocabulary\Controller as VocabularyController;
 use Alchemy\Phrasea\Vocabulary\ControlProvider\ControlProviderInterface;
@@ -90,7 +91,10 @@ class FieldsController extends Controller
 
     public function listDcFields()
     {
-        $data = $this->app['serializer']->serialize(array_values(\databox::get_available_dcfields()), 'json');
+        $provider = new DublinCoreFieldProvider();
+        $fields = array_values($provider->getAvailableDublinCoreFields());
+
+        $data = $this->app['serializer']->serialize($fields, 'json');
 
         return new Response($data, 200, ['content-type' => 'application/json']);
     }

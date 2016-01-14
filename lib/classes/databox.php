@@ -14,21 +14,17 @@ use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
 use Alchemy\Phrasea\Core\PhraseaTokens;
 use Alchemy\Phrasea\Core\Thumbnail\ThumbnailedElement;
 use Alchemy\Phrasea\Core\Version\DataboxVersionRepository;
+use Alchemy\Phrasea\Databox\Databox as DataboxVO;
 use Alchemy\Phrasea\Databox\DataboxRepository;
-use Alchemy\Phrasea\Databox\DataboxService;
-use Alchemy\Phrasea\Databox\Field\DublinCoreFieldProvider;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
+use Alchemy\Phrasea\Databox\Structure\Structure;
 use Alchemy\Phrasea\Exception\InvalidArgumentException;
 use Alchemy\Phrasea\Model\Entities\User;
 use Alchemy\Phrasea\Status\StatusStructure;
 use Alchemy\Phrasea\Status\StatusStructureFactory;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\Statement;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Translation\TranslatorInterface;
-
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
 use Alchemy\Phrasea\Core\Event\Databox\DeletedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\ReindexAskedEvent;
@@ -51,91 +47,15 @@ class databox extends base implements ThumbnailedElement
 
     /** @var array */
     protected static $_xpath_thesaurus = [];
+
     /** @var array */
     protected static $_dom_thesaurus = [];
+
     /** @var array */
     protected static $_thesaurus = [];
 
     /** @var SimpleXMLElement */
     protected static $_sxml_thesaurus = [];
-
-    /**
-     * @param Application $app
-     * @param Connection  $connection
-     * @param SplFileInfo $data_template
-     * @return databox
-     * @throws \Doctrine\DBAL\DBALException
-     * @deprecated Use DataboxService::createDatabox(...) instead
-     */
-    public static function create(Application $app, Connection $connection, \SplFileInfo $data_template)
-    {
-        /** @var DataboxService $databoxService */
-        static $databoxService = null;
-
-        if ($databoxService === null) {
-            $databoxService = $app['databoxes.service'];
-        }
-
-        return $databoxService->createDatabox($connection, $data_template);
-    }
-
-    /**
-     *
-     * @param  Application $app
-     * @param  string      $host
-     * @param  int         $port
-     * @param  string      $user
-     * @param  string      $password
-     * @param  string      $dbname
-     * @return databox
-     * @deprecated Use DataboxService::mountDatabox(...) instead
-     */
-    public static function mount(Application $app, $host, $port, $user, $password, $dbname)
-    {
-        /** @var DataboxService $databoxService */
-        static $databoxService = null;
-
-        if ($databoxService === null) {
-            $databoxService = $app['databoxes.service'];
-        }
-
-        return $databoxService->mountDatabox($host, $port, $user, $password, $dbname);
-    }
-
-    public static function dispatch(Filesystem $filesystem, $repository_path, $date = false)
-    {
-        if (! $date) {
-            $date = date('Y-m-d H:i:s');
-        }
-
-        $repository_path = p4string::addEndSlash($repository_path);
-
-        $year = date('Y', strtotime($date));
-        $month = date('m', strtotime($date));
-        $day = date('d', strtotime($date));
-
-        $n = 0;
-        $comp = $year . DIRECTORY_SEPARATOR . $month . DIRECTORY_SEPARATOR . $day . DIRECTORY_SEPARATOR;
-
-        while (($pathout = $repository_path . $comp . self::addZeros($n)) && is_dir($pathout) && iterator_count(new \DirectoryIterator($pathout)) > 100) {
-            $n ++;
-        }
-
-        $filesystem->mkdir($pathout, 0750);
-
-        return $pathout . DIRECTORY_SEPARATOR;
-    }
-
-    public static function get_available_dcfields()
-    {
-        static $fieldProvider = null;
-
-        if ($fieldProvider === null) {
-            $fieldProvider = new DublinCoreFieldProvider();
-        }
-
-        return $fieldProvider->getAvailableDublinCoreFields();
-    }
 
     /**
      *
@@ -145,53 +65,12 @@ class databox extends base implements ThumbnailedElement
     public static function getPrintLogo($sbas_id)
     {
         $out = '';
-        if (is_file(($filename = __DIR__ . '/../../config/minilogos/'.\databox::PIC_PDF.'_' . $sbas_id . '.jpg')))
+
+        if (is_file(($filename = __DIR__ . '/../../config/minilogos/'.\databox::PIC_PDF.'_' . $sbas_id . '.jpg'))) {
             $out = file_get_contents($filename);
-
-        return $out;
-    }
-
-    /**
-     * @param TranslatorInterface $translator
-     * @param  string             $structure
-     * @return Array
-     */
-    public static function get_structure_errors(TranslatorInterface $translator, $structure)
-    {
-        $sx_structure = simplexml_load_string($structure);
-
-        $subdefgroup = $sx_structure->subdefs[0];
-        $AvSubdefs = [];
-
-        $errors = [];
-
-        foreach ($subdefgroup as $k => $subdefs) {
-            $subdefgroup_name = trim((string) $subdefs->attributes()->name);
-
-            if ($subdefgroup_name == '') {
-                $errors[] = $translator->trans('ERREUR : TOUTES LES BALISES subdefgroup necessitent un attribut name');
-                continue;
-            }
-
-            if ( ! isset($AvSubdefs[$subdefgroup_name]))
-                $AvSubdefs[$subdefgroup_name] = [];
-
-            foreach ($subdefs as $sd) {
-                $sd_name = trim(mb_strtolower((string) $sd->attributes()->name));
-                $sd_class = trim(mb_strtolower((string) $sd->attributes()->class));
-                if ($sd_name == '' || isset($AvSubdefs[$subdefgroup_name][$sd_name])) {
-                    $errors[] = $translator->trans('ERREUR : Les name de subdef sont uniques par groupe de subdefs et necessaire');
-                    continue;
-                }
-                if ( ! in_array($sd_class, ['thumbnail', 'preview', 'document'])) {
-                    $errors[] = $translator->trans('ERREUR : La classe de subdef est necessaire et egal a "thumbnail","preview" ou "document"');
-                    continue;
-                }
-                $AvSubdefs[$subdefgroup_name][$sd_name] = $sd;
-            }
         }
 
-        return $errors;
+        return $out;
     }
 
     public static function purge()
@@ -199,68 +78,77 @@ class databox extends base implements ThumbnailedElement
         self::$_xpath_thesaurus = self::$_dom_thesaurus = self::$_thesaurus = self::$_sxml_thesaurus = [];
     }
 
-    private static function addZeros($n, $length = 5)
-    {
-        return str_pad($n, $length, '0');
-    }
     /** @var int */
     protected $id;
-    /** @var string */
-    protected $structure;
-    /** @var array */
-    protected $_xpath_structure;
-    /** @var DOMDocument */
-    protected $_dom_structure;
-    /** @var DOMDocument */
-    protected $_dom_cterms;
-    /** @var SimpleXMLElement */
-    protected $_sxml_structure;
+
+    /** @var Structure */
+    protected $structure = null;
+
     /** @var databox_descriptionStructure */
     protected $meta_struct;
+
     /** @var databox_subdefsStructure */
     protected $subdef_struct;
+
     protected $thesaurus;
+
     protected $cterms;
+
+    /** @var DOMDocument */
+    protected $_dom_cterms = null;
+
     protected $cgus;
+
+    /** @var \appbox */
+    private $applicationBox;
+
     /** @var DataboxRepository */
     private $databoxRepository;
+
     /** @var RecordRepository */
     private $recordRepository;
+
+    /** @var DataboxVO */
+    private $databox;
+
     /** @var string[]  */
     private $labels = [];
+
     /** @var int */
     private $ord;
+
     /** @var string */
     private $viewname;
 
     /**
      * @param Application $app
-     * @param int $sbas_id
      * @param DataboxRepository $databoxRepository
-     * @param array $row
+     * @param DataboxVO $databox
      */
-    public function __construct(Application $app, $sbas_id, DataboxRepository $databoxRepository, array $row)
+    public function __construct(Application $app, DataboxRepository $databoxRepository, DataboxVO $databox)
     {
-        assert(is_int($sbas_id));
-        assert($sbas_id > 0);
-
+        $this->applicationBox = $app->getApplicationBox();
         $this->databoxRepository = $databoxRepository;
-        $this->id = $sbas_id;
+        $this->databox = $databox;
 
-        $connectionConfigs = phrasea::sbas_params($app);
-
-        if (! isset($connectionConfigs[$sbas_id])) {
-            throw new NotFoundHttpException(sprintf('databox %d not found', $sbas_id));
-        }
-
-        $connectionConfig = $connectionConfigs[$sbas_id];
-        $connection = $app['dbal.provider']($connectionConfig);
+        $connection = $app['dbal.provider']($databox->getConnectionParameters());
 
         $versionRepository = new DataboxVersionRepository($connection);
 
         parent::__construct($app, $connection, $versionRepository);
+    }
 
-        $this->loadFromRow($row);
+    public function createCollection($name, User $owner = null)
+    {
+        return \collection::create($this->app, $this, $this->get_appbox(), $name, $owner);
+    }
+
+    /**
+     * @return DataboxVO
+     */
+    public function getDataObject()
+    {
+        return $this->databox;
     }
 
     public function setNewStructure(\SplFileInfo $data_template, $path_doc)
@@ -284,11 +172,6 @@ class databox extends base implements ThumbnailedElement
         $this->feed_meta_fields();
 
         return $this;
-    }
-
-    public function createCollection($name, User $owner = null)
-    {
-        return \collection::create($this->app, $this, $this->get_appbox(), $name, $owner);
     }
 
     /**
@@ -344,24 +227,9 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_dom_structure()
     {
-        if ($this->_dom_structure) {
-            return $this->_dom_structure;
-        }
+        $this->loadStructure();
 
-        $structure = $this->get_structure();
-
-        $dom = new DOMDocument();
-
-        $dom->standalone = true;
-        $dom->preserveWhiteSpace = false;
-        $dom->formatOutput = true;
-
-        if ($structure && $dom->loadXML($structure) !== false)
-            $this->_dom_structure = $dom;
-        else
-            $this->_dom_structure = false;
-
-        return $this->_dom_structure;
+        return $this->structure->getDomDocument();
     }
 
     /**
@@ -369,13 +237,20 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_structure()
     {
-        if ($this->structure) {
-            return $this->structure;
-        }
+        $this->loadStructure();
 
-        $this->structure = $this->retrieve_structure();
+        return $this->structure->getRawStructure();
+    }
 
-        return $this->structure;
+    /**
+     *
+     * @return SimpleXMLElement
+     */
+    public function get_sxml_structure()
+    {
+        $this->loadStructure();
+
+        return $this->structure->getSimpleXmlElement();
     }
 
     public function feed_meta_fields()
@@ -400,11 +275,11 @@ class databox extends base implements ThumbnailedElement
 
             $type = isset($field['type']) ? $field['type'] : 'string';
             $type = in_array($type, [
-                    databox_field::TYPE_DATE,
-                    databox_field::TYPE_NUMBER,
-                    databox_field::TYPE_STRING,
-                    databox_field::TYPE_TEXT
-                ]) ? $type : databox_field::TYPE_STRING;
+                databox_field::TYPE_DATE,
+                databox_field::TYPE_NUMBER,
+                databox_field::TYPE_STRING,
+                databox_field::TYPE_TEXT
+            ]) ? $type : databox_field::TYPE_STRING;
 
             $multi = isset($field['multi']) ? (Boolean) (string) $field['multi'] : false;
 
@@ -432,42 +307,13 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
-     *
-     * @return SimpleXMLElement
-     */
-    public function get_sxml_structure()
-    {
-        if ($this->_sxml_structure) {
-            return $this->_sxml_structure;
-        }
-
-        $structure = $this->get_structure();
-
-        if ($structure && false !== $tmp = simplexml_load_string($structure))
-            $this->_sxml_structure = $tmp;
-        else
-            $this->_sxml_structure = false;
-
-        return $this->_sxml_structure;
-    }
-
-    /**
      * @return DOMXpath
      */
     public function get_xpath_structure()
     {
-        if ($this->_xpath_structure) {
-            return $this->_xpath_structure;
-        }
+        $this->loadStructure();
 
-        $dom_doc = $this->get_dom_structure();
-
-        if ($dom_doc && ($tmp = new DOMXpath($dom_doc)) !== false)
-            $this->_xpath_structure = $tmp;
-        else
-            $this->_xpath_structure = false;
-
-        return $this->_xpath_structure;
+        return $this->structure->getDomXpath();
     }
 
     /**
@@ -526,6 +372,7 @@ class databox extends base implements ThumbnailedElement
             default:
                 break;
         }
+
         parent::delete_data_from_cache($option);
     }
 
@@ -607,7 +454,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_appbox()
     {
-        return $this->app->getApplicationBox();
+        return $this->applicationBox;
     }
 
     public function set_label($code, $label)
@@ -749,73 +596,10 @@ class databox extends base implements ThumbnailedElement
 
     public function unmount_databox()
     {
-        $old_dbname = $this->get_dbname();
+        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
+        $service = $this->app['databoxes.service'];
 
-        foreach ($this->get_collections() as $collection) {
-            $collection->unmount();
-        }
-
-        $query = $this->app['phraseanet.user-query'];
-        $total = $query->on_sbas_ids([$this->id])
-            ->include_phantoms(false)
-            ->include_special_users(true)
-            ->include_invite(true)
-            ->include_templates(true)
-            ->get_total();
-        $n = 0;
-        while ($n < $total) {
-            $results = $query->limit($n, 50)->execute()->get_results();
-            foreach ($results as $user) {
-                $this->app->getAclForUser($user)->delete_data_from_cache(ACL::CACHE_RIGHTS_SBAS);
-                $this->app->getAclForUser($user)->delete_data_from_cache(ACL::CACHE_RIGHTS_BAS);
-                $this->app->getAclForUser($user)->delete_injected_rights_sbas($this);
-            }
-            $n+=50;
-        }
-
-        foreach ($this->app['repo.story-wz']->findByDatabox($this->app, $this) as $story) {
-            $this->app['orm.em']->remove($story);
-        }
-
-        foreach ($this->app['repo.basket-elements']->findElementsByDatabox($this) as $element) {
-            $this->app['orm.em']->remove($element);
-        }
-
-        $this->app['orm.em']->flush();
-
-        $params = [':site_id' => $this->app['conf']->get(['main', 'key'])];
-
-        $sql = 'DELETE FROM clients WHERE site_id = :site_id';
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute($params);
-        $stmt->closeCursor();
-
-        $sql = 'DELETE FROM memcached WHERE site_id = :site_id';
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute($params);
-        $stmt->closeCursor();
-
-        $sql = "DELETE FROM sbas WHERE sbas_id = :sbas_id";
-        $stmt = $this->get_appbox()->get_connection()->prepare($sql);
-        $stmt->execute([':sbas_id' => $this->id]);
-        $stmt->closeCursor();
-
-        $sql = "DELETE FROM sbasusr WHERE sbas_id = :sbas_id";
-        $stmt = $this->get_appbox()->get_connection()->prepare($sql);
-        $stmt->execute([':sbas_id' => $this->id]);
-        $stmt->closeCursor();
-
-        $this->get_appbox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
-
-        $this->app['dispatcher']->dispatch(
-            DataboxEvents::UNMOUNTED,
-            new UnmountedEvent(
-                null,
-                array(
-                    'dbname'=>$old_dbname
-                )
-            )
-        );
+        $service->unmountDatabox($this);
 
         return;
     }
@@ -1195,22 +979,19 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_dom_cterms()
     {
-        if ($this->_dom_cterms) {
-            return $this->_dom_cterms;
-        }
+        if ($this->_dom_cterms === null) {
+            $dom = new DOMDocument();
 
-        $cterms = $this->get_cterms();
+            $dom->standalone = true;
+            $dom->preserveWhiteSpace = false;
+            $dom->formatOutput = true;
 
-        $dom = new DOMDocument();
-
-        $dom->standalone = true;
-        $dom->preserveWhiteSpace = false;
-        $dom->formatOutput = true;
-
-        if ($cterms && $dom->loadXML($cterms) !== false)
-            $this->_dom_cterms = $dom;
-        else
             $this->_dom_cterms = false;
+
+            if ($dom->loadXML($this->get_cterms()) !== false) {
+                $this->_dom_cterms = $dom;
+            }
+        }
 
         return $this->_dom_cterms;
     }
@@ -1338,16 +1119,8 @@ class databox extends base implements ThumbnailedElement
 
     protected function retrieve_structure()
     {
-        try {
-            $data = $this->get_data_from_cache(self::CACHE_STRUCTURE);
-            if (is_array($data)) {
-                return $data;
-            }
-        } catch (\Exception $e) {
-
-        }
-
         $structure = null;
+
         $sql = "SELECT value FROM pref WHERE prop='structure'";
         $stmt = $this->get_connection()->prepare($sql);
         $stmt->execute();
@@ -1356,9 +1129,8 @@ class databox extends base implements ThumbnailedElement
 
         if ($row)
             $structure = $row['value'];
-        $this->set_data_to_cache($structure, self::CACHE_STRUCTURE);
 
-        return $structure;
+        return new Structure($structure);
     }
 
     protected function load_cgus()
@@ -1420,5 +1192,12 @@ class databox extends base implements ThumbnailedElement
         $this->labels['en'] = $row['label_en'];
         $this->labels['de'] = $row['label_de'];
         $this->labels['nl'] = $row['label_nl'];
+    }
+
+    private function loadStructure()
+    {
+        if ($this->structure === null) {
+            $this->structure = $this->retrieve_structure();
+        }
     }
 }

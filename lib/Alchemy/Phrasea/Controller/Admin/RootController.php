@@ -11,6 +11,7 @@
 namespace Alchemy\Phrasea\Controller\Admin;
 
 use Alchemy\Phrasea\Controller\Controller;
+use Alchemy\Phrasea\Databox\Structure\StructureValidator;
 use Alchemy\Phrasea\Exception\SessionNotFound;
 use Alchemy\Phrasea\Status\StatusStructureProviderInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -110,9 +111,12 @@ class RootController extends Controller
             $this->app->abort(403);
         }
 
+        $validator = new StructureValidator();
         $databox = $this->findDataboxById((int) $databox_id);
-        $structure = $databox->get_structure();
-        $errors = \databox::get_structure_errors($this->app['translator'], $structure);
+        $errors = $validator
+            ->validateDataboxStructure($databox)
+            ->getErrors($this->app['translator']);
+
 
         if ($updateOk = !!$request->query->get('success', false)) {
             $updateOk = true;
@@ -125,7 +129,7 @@ class RootController extends Controller
         return $this->render('admin/structure.html.twig', [
             'databox'         => $databox,
             'errors'          => $errors,
-            'structure'       => $structure,
+            'structure'       => $databox->get_structure(),
             'errorsStructure' => $errorsStructure,
             'updateOk'        => $updateOk
         ]);
@@ -141,7 +145,10 @@ class RootController extends Controller
             $this->app->abort(400, $this->app->trans('Missing "structure" parameter'));
         }
 
-        $errors = \databox::get_structure_errors($this->app['translator'], $structure);
+        $validator = new StructureValidator();
+        $errors = $validator
+            ->validateStructure($structure)
+            ->getErrors($this->app['translator']);
 
         $domst = new \DOMDocument('1.0', 'UTF-8');
         $domst->preserveWhiteSpace = false;

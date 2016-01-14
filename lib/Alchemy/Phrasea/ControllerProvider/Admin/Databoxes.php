@@ -25,7 +25,7 @@ class Databoxes implements ControllerProviderInterface, ServiceProviderInterface
     public function register(Application $app)
     {
         $app['controller.admin.databoxes'] = $app->share(function (PhraseaApplication $app) {
-            return new DataboxesController($app);
+            return new DataboxesController($app, $app['databoxes.service']);
         });
     }
 

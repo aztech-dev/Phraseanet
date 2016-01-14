@@ -34,6 +34,7 @@ use Alchemy\Phrasea\Model\RecordInterface;
 use Alchemy\Phrasea\Model\Serializer\CaptionSerializer;
 use Alchemy\Phrasea\SearchEngine\SearchEngineInterface;
 use Alchemy\Phrasea\SearchEngine\SearchEngineOptions;
+use Alchemy\Phrasea\Utilities\PathHelper;
 use Doctrine\ORM\EntityManager;
 use MediaVorus\Media\MediaInterface;
 use MediaVorus\MediaVorus;
@@ -907,7 +908,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
             $pathhd = p4string::addEndSlash((string) ($baseprefs->path));
 
             $filehd = $this->getRecordId() . "_document." . strtolower($media->getFile()->getExtension());
-            $pathhd = databox::dispatch($filesystem, $pathhd);
+            $pathhd = PathHelper::dispatch($filesystem, $pathhd);
 
             $filesystem->copy($media->getFile()->getRealPath(), $pathhd . $filehd, true);
 
@@ -925,7 +926,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
                 $this->get_subdef($name)->remove_file();
                 $this->clearSubdefCache($name);
             } else {
-                $path = databox::dispatch($filesystem, $subdef_def->get_path());
+                $path = PathHelper::dispatch($filesystem, $subdef_def->get_path());
                 $filesystem->mkdir($path, 0750);
                 $path_file_dest = $path . $newfilename;
             }
@@ -1279,7 +1280,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         /** @var Filesystem $filesystem */
         $filesystem = $app['filesystem'];
 
-        $pathhd = databox::dispatch($filesystem, trim($databox->get_sxml_structure()->path));
+        $pathhd = PathHelper::dispatch($filesystem, trim($databox->get_sxml_structure()->path));
         $newname = $record->getRecordId() . "_document." . pathinfo($file->getOriginalName(), PATHINFO_EXTENSION);
 
         $filesystem->copy($file->getFile()->getRealPath(), $pathhd . $newname, true);
