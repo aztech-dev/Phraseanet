@@ -12,5 +12,7 @@ class SetCurrentDatabaseStep extends AbstractCreateStep
         $sql = 'USE `' . $connection->getDatabase() . '`';
         $stmt = $connection->prepare($sql);
         $stmt->execute();
+
+        return $this->runNext($connection, $dataTemplate);
     }
 }

@@ -48,14 +48,23 @@ class DataboxServiceProvider implements ServiceProviderInterface
             return $repository;
         });
 
+        $app['databoxes.repo'] = function () use ($app) {
+            return $app['repo.databoxes'];
+        };
+
         $app['databoxes.service'] = $app->share(function (PhraseaApplication $app) {
-            $process = new DataboxProcessRegistry();
+            $processRegistry = new DataboxProcessRegistry();
 
-            $process->registerProcess(Create\CreateStep::class, $this->buildCreateStepRegisty($app));
-            $process->registerProcess(Mount\MountStep::class, $this->buildMountStepRegistry($app));
-            $process->registerProcess(Unmount\UnmountStep::class, $this->buildUnmountStepRegistry($app));
+            $processRegistry->registerProcess(Create\CreateStep::class, $this->buildCreateStepRegisty($app));
+            $processRegistry->registerProcess(Mount\MountStep::class, $this->buildMountStepRegistry($app));
+            $processRegistry->registerProcess(Unmount\UnmountStep::class, $this->buildUnmountStepRegistry($app));
 
-            return new DataboxService($app, $app['repo.databoxes'], $app['dispatcher'], $process);
+            return new DataboxService(
+                $app['repo.databoxes'],
+                $app['dispatcher'],
+                $processRegistry,
+                $app['dbal.provider']
+            );
         });
     }
 
@@ -144,6 +153,6 @@ class DataboxServiceProvider implements ServiceProviderInterface
      */
     public function boot(Application $app)
     {
-        $app['databoxes.repo'] = $app['repo.databoxes'];
+
     }
 }

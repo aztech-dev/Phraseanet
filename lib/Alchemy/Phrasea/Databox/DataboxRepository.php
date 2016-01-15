@@ -31,7 +31,7 @@ interface DataboxRepository
     public function findAll();
 
     /**
-     * @param \databox $databox
+     * @param Databox $databox
      */
-    public function save(\databox $databox);
+    public function save(Databox $databox);
 }

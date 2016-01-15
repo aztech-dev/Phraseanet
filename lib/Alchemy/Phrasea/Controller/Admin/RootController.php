@@ -11,6 +11,7 @@
 namespace Alchemy\Phrasea\Controller\Admin;
 
 use Alchemy\Phrasea\Controller\Controller;
+use Alchemy\Phrasea\Databox\Structure\Structure;
 use Alchemy\Phrasea\Databox\Structure\StructureValidator;
 use Alchemy\Phrasea\Exception\SessionNotFound;
 use Alchemy\Phrasea\Status\StatusStructureProviderInterface;
@@ -147,7 +148,7 @@ class RootController extends Controller
 
         $validator = new StructureValidator();
         $errors = $validator
-            ->validateStructure($structure)
+            ->validateStructure(new Structure($structure))
             ->getErrors($this->app['translator']);
 
         $domst = new \DOMDocument('1.0', 'UTF-8');

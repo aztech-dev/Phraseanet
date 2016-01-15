@@ -2,6 +2,9 @@
 
 namespace Alchemy\Phrasea\Databox;
 
+use Alchemy\Phrasea\Exception\InvalidArgumentException;
+use Assert\Assertion;
+
 class Databox
 {
 
@@ -65,6 +68,8 @@ class Databox
      */
     public function __construct($databoxId, $type, $dsn, $user, $password, $database)
     {
+        Assertion::notEmpty($dsn, 'Databox DSN is required.');
+
         $this->databoxId = $databoxId;
         $this->type = $type;
         $this->dsn = $dsn;
@@ -79,6 +84,14 @@ class Databox
     public function getDataboxId()
     {
         return $this->databoxId;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDsn()
+    {
+        return $this->dsn;
     }
 
     /**
@@ -171,6 +184,19 @@ class Databox
 
     /**
      * @param string $languageCode
+     * @return string
+     */
+    public function getLabel($languageCode)
+    {
+        if (array_key_exists($languageCode, $this->labels)) {
+            return $this->labels[$languageCode];
+        }
+
+        throw new InvalidArgumentException(sprintf('Code %s is not defined', $languageCode));
+    }
+
+    /**
+     * @param string $languageCode
      * @param string $label
      */
     public function setLabel($languageCode, $label)
@@ -202,7 +228,19 @@ class Databox
     private function parseParameters()
     {
         if ($this->parameters === null) {
-            $this->parameters = explode(';', $this->dsn);
+            $dsnParameters = explode(';', $this->dsn);
+
+            $this->parameters = [];
+
+            foreach ($dsnParameters as $dsnParameter) {
+                if (trim($dsnParameter) == '') {
+                    continue;
+                }
+
+                list ($paramName, $paramValue) = explode('=', $dsnParameter, 2);
+
+                $this->parameters[$paramName] = $paramValue;
+            }
 
             $this->parameters['user'] = $this->user;
             $this->parameters['password'] = $this->password;

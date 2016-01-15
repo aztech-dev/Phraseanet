@@ -31,8 +31,6 @@ use Alchemy\Phrasea\Core\Event\Databox\ReindexAskedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\StructureChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\TouChangedEvent;
-use Alchemy\Phrasea\Core\Event\Databox\UnmountedEvent;
-
 
 class databox extends base implements ThumbnailedElement
 {
@@ -78,9 +76,6 @@ class databox extends base implements ThumbnailedElement
         self::$_xpath_thesaurus = self::$_dom_thesaurus = self::$_thesaurus = self::$_sxml_thesaurus = [];
     }
 
-    /** @var int */
-    protected $id;
-
     /** @var Structure */
     protected $structure = null;
 
@@ -90,8 +85,10 @@ class databox extends base implements ThumbnailedElement
     /** @var databox_subdefsStructure */
     protected $subdef_struct;
 
+    /** @var string */
     protected $thesaurus;
 
+    /** @var string */
     protected $cterms;
 
     /** @var DOMDocument */
@@ -111,15 +108,6 @@ class databox extends base implements ThumbnailedElement
     /** @var DataboxVO */
     private $databox;
 
-    /** @var string[]  */
-    private $labels = [];
-
-    /** @var int */
-    private $ord;
-
-    /** @var string */
-    private $viewname;
-
     /**
      * @param Application $app
      * @param DataboxRepository $databoxRepository
@@ -138,6 +126,11 @@ class databox extends base implements ThumbnailedElement
         parent::__construct($app, $connection, $versionRepository);
     }
 
+    /**
+     * @param $name
+     * @param User $owner
+     * @return \Alchemy\Phrasea\Collection\Collection|collection
+     */
     public function createCollection($name, User $owner = null)
     {
         return \collection::create($this->app, $this, $this->get_appbox(), $name, $owner);
@@ -151,6 +144,13 @@ class databox extends base implements ThumbnailedElement
         return $this->databox;
     }
 
+    public function getStructure()
+    {
+        $this->loadStructure();
+
+        return $this->structure;
+    }
+
     public function setNewStructure(\SplFileInfo $data_template, $path_doc)
     {
         if ( ! file_exists($data_template->getPathname())) {
@@ -158,17 +158,16 @@ class databox extends base implements ThumbnailedElement
         }
 
         $contents = file_get_contents($data_template->getPathname());
-
         $contents = str_replace(
-            ["{{basename}}", "{{datapathnoweb}}"]
-            , [$this->connection->getDatabase(), rtrim($path_doc, '/').'/']
-            , $contents
+            ["{{basename}}", "{{datapathnoweb}}"],
+            [$this->connection->getDatabase(), rtrim($path_doc, '/').'/'],
+            $contents
         );
 
         $dom_doc = new DOMDocument();
         $dom_doc->loadXML($contents);
-        $this->saveStructure($dom_doc);
 
+        $this->saveStructure($dom_doc);
         $this->feed_meta_fields();
 
         return $this;
@@ -199,15 +198,14 @@ class databox extends base implements ThumbnailedElement
         );
         $stmt->closeCursor();
 
-        $this->_sxml_structure = $this->_dom_structure = $this->_xpath_structure = null;
-
+        $this->structure = null;
         $this->meta_struct = null;
 
         $this->get_appbox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
         $this->delete_data_from_cache(self::CACHE_STRUCTURE);
         $this->delete_data_from_cache(self::CACHE_META_STRUCT);
 
-        $this->databoxRepository->save($this);
+        $this->databoxRepository->save($this->databox);
 
         $this->app['dispatcher']->dispatch(
             DataboxEvents::STRUCTURE_CHANGED,
@@ -224,6 +222,7 @@ class databox extends base implements ThumbnailedElement
 
     /**
      * @return DOMDocument
+     * @deprecated use \databox::getStructure() instead
      */
     public function get_dom_structure()
     {
@@ -234,6 +233,7 @@ class databox extends base implements ThumbnailedElement
 
     /**
      * @return string
+     * @deprecated use \databox::getStructure() instead
      */
     public function get_structure()
     {
@@ -245,6 +245,7 @@ class databox extends base implements ThumbnailedElement
     /**
      *
      * @return SimpleXMLElement
+     * @deprecated use \databox::getStructure() instead
      */
     public function get_sxml_structure()
     {
@@ -253,24 +254,38 @@ class databox extends base implements ThumbnailedElement
         return $this->structure->getSimpleXmlElement();
     }
 
+    /**
+     * @return DOMXpath
+     * @deprecated use \databox::getStructure() instead
+     */
+    public function get_xpath_structure()
+    {
+        $this->loadStructure();
+
+        return $this->structure->getDomXpath();
+    }
+
     public function feed_meta_fields()
     {
-        $sxe = $this->get_sxml_structure();
+        $structure = $this->getStructure();
+        $sxe = $structure->getSimpleXmlElement();
 
         foreach ($sxe->description->children() as $fname => $field) {
-            $dom_struct = $this->get_dom_structure();
-            $xp_struct = $this->get_xpath_structure();
+            $dom_struct = $structure->getDomDocument();
+            $xp_struct = $structure->getDomXpath();
             $fname = (string) $fname;
             $src = trim(isset($field['src']) ? str_replace('/rdf:RDF/rdf:Description/', '', $field['src']) : '');
-
             $meta_id = isset($field['meta_id']) ? $field['meta_id'] : null;
+
             if ( ! is_null($meta_id))
                 continue;
 
             $nodes = $xp_struct->query('/record/description/' . $fname);
+
             if ($nodes->length > 0) {
                 $nodes->item(0)->parentNode->removeChild($nodes->item(0));
             }
+
             $this->saveStructure($dom_struct);
 
             $type = isset($field['type']) ? $field['type'] : 'string';
@@ -307,16 +322,6 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
-     * @return DOMXpath
-     */
-    public function get_xpath_structure()
-    {
-        $this->loadStructure();
-
-        return $this->structure->getDomXpath();
-    }
-
-    /**
      * @return RecordRepository
      */
     public function getRecordRepository()
@@ -328,14 +333,18 @@ class databox extends base implements ThumbnailedElement
         return $this->recordRepository;
     }
 
+    /**
+     * @return int
+     * @deprecated use Databox::getDisplayIndex()
+     */
     public function get_ord()
     {
-        return $this->ord;
+        return $this->databox->getDisplayIndex();
     }
 
     public function getRootIdentifier()
     {
-        return $this->get_sbas_id();
+        return $this->databox->getDataboxId();
     }
 
     /**
@@ -345,7 +354,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_sbas_id()
     {
-        return $this->id;
+        return $this->databox->getDataboxId();
     }
 
     public function updateThumbnail($thumbnailType, File $file = null)
@@ -428,23 +437,19 @@ class databox extends base implements ThumbnailedElement
         }
     }
 
+    /**
+     * @return string
+     * @deprecated use Databox::getViewName() instead.
+     */
     public function get_viewname()
     {
-        return $this->viewname ? : $this->connection->getDatabase();
+        return $this->databox->getViewName() ?: $this->databox->getDatabase();
     }
 
     public function set_viewname($viewname)
     {
-        $sql = 'UPDATE sbas SET viewname = :viewname WHERE sbas_id = :sbas_id';
-
-        $stmt = $this->get_appbox()->get_connection()->prepare($sql);
-        $stmt->execute([':viewname' => $viewname, ':sbas_id' => $this->id]);
-        $stmt->closeCursor();
-
-        $this->get_appbox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
-
-        $this->viewname = $viewname;
-        $this->databoxRepository->save($this);
+        $this->databox->setViewName($viewname);
+        $this->databoxRepository->save($this->databox);
 
         return $this;
     }
@@ -459,19 +464,8 @@ class databox extends base implements ThumbnailedElement
 
     public function set_label($code, $label)
     {
-        if (!array_key_exists($code, $this->labels)) {
-            throw new InvalidArgumentException(sprintf('Code %s is not defined', $code));
-        }
-
-        $sql = "UPDATE sbas SET label_$code = :label
-            WHERE sbas_id = :sbas_id";
-        $stmt = $this->get_appbox()->get_connection()->prepare($sql);
-        $stmt->execute([':label' => $label, ':sbas_id'   => $this->id]);
-        $stmt->closeCursor();
-
-        $this->labels[$code] = $label;
-
-        $this->databoxRepository->save($this);
+        $this->databox->setLabel($code, $label);
+        $this->databoxRepository->save($this->databox);
 
         phrasea::reset_sbasDatas($this->app['phraseanet.appbox']);
 
@@ -761,7 +755,7 @@ class databox extends base implements ThumbnailedElement
         $stmt->execute($params);
         $stmt->closeCursor();
 
-        $this->databoxRepository->save($this);
+        $this->databoxRepository->save($this->databox);
 
         return $this;
     }
@@ -779,7 +773,7 @@ class databox extends base implements ThumbnailedElement
         $stmt->closeCursor();
         $this->delete_data_from_cache(databox::CACHE_THESAURUS);
 
-        $this->databoxRepository->save($this);
+        $this->databoxRepository->save($this->databox);
 
         $this->app['dispatcher']->dispatch(
             DataboxEvents::THESAURUS_CHANGED,
@@ -1077,11 +1071,6 @@ class databox extends base implements ThumbnailedElement
         return $vars;
     }
 
-    public function hydrate(Application $app)
-    {
-        $this->app = $app;
-    }
-
     /**
      * Tells whether the registration is enable or not.
      *
@@ -1089,9 +1078,9 @@ class databox extends base implements ThumbnailedElement
      */
     public function isRegistrationEnabled()
     {
-        if (false !== $xml = $this->get_sxml_structure()) {
+        if (false !== $xml = $this->getStructure()->getSimpleXmlElement()) {
             foreach ($xml->xpath('/record/caninscript') as $canRegister) {
-                if (false !== (Boolean) (string) $canRegister) {
+                if (false !== (bool) (string) $canRegister) {
                     return true;
                 }
             }
@@ -1108,12 +1097,19 @@ class databox extends base implements ThumbnailedElement
     public function getRawData()
     {
         return [
-            'ord' => $this->ord,
-            'viewname' => $this->viewname,
-            'label_en' => $this->labels['en'],
-            'label_fr' => $this->labels['fr'],
-            'label_de' => $this->labels['de'],
-            'label_nl' => $this->labels['nl'],
+            'ord' => $this->databox->getDisplayIndex(),
+            'viewname' => $this->databox->getViewName(),
+            'label_en' => $this->databox->getLabel('en'),
+            'label_fr' => $this->databox->getLabel('fr'),
+            'label_de' => $this->databox->getLabel('de'),
+            'label_nl' => $this->databox->getLabel('nl'),
+            'dsn'      => $this->databox->getDsn(),
+            'host'     => $this->databox->getHost(),
+            'port'     => $this->databox->getPort(),
+            'user'     => $this->databox->getUser(),
+            'pwd'      => $this->databox->getPassword(),
+            'dbname'   => $this->databox->getDatabase(),
+            'sqlengine'   => $this->databox->getType()
         ];
     }
 
@@ -1149,6 +1145,8 @@ class databox extends base implements ThumbnailedElement
         $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
 
+        $TOU = [];
+
         foreach ($rs as $row) {
             $TOU[$row['locale']] = ['updated_on' => $row['updated_on'], 'value' => $row['value']];
         }
@@ -1179,19 +1177,6 @@ class databox extends base implements ThumbnailedElement
         $this->set_data_to_cache($TOU, self::CACHE_CGUS);
 
         return $this;
-    }
-
-    /**
-     * @param array $row
-     */
-    private function loadFromRow(array $row)
-    {
-        $this->ord = $row['ord'];
-        $this->viewname = $row['viewname'];
-        $this->labels['fr'] = $row['label_fr'];
-        $this->labels['en'] = $row['label_en'];
-        $this->labels['de'] = $row['label_de'];
-        $this->labels['nl'] = $row['label_nl'];
     }
 
     private function loadStructure()

@@ -1,4 +1,5 @@
 <?php
+
 /*
  * This file is part of Phraseanet
  *
@@ -38,12 +39,29 @@ class DataboxFactory
 
     /**
      * @param int $id
-     * @param array $raw
+     * @param array $data
      * @return \databox when Databox could not be retrieved from Persistence layer
      */
-    public function create($id, array $raw)
+    public function create($id, array $data)
     {
-        return new \databox($this->app, $id, $this->databoxRepository, $raw);
+        $databoxVO = new Databox(
+            $id,
+            $data['sqlengine'],
+            $data['dsn'],
+            $data['user'],
+            $data['pwd'],
+            $data['dbname']
+        );
+
+        $databoxVO->setDisplayIndex($data['ord']);
+        $databoxVO->setViewName($data['viewname']);
+
+        $databoxVO->setLabel('fr', $data['label_fr']);
+        $databoxVO->setLabel('en', $data['label_en']);
+        $databoxVO->setLabel('de', $data['label_de']);
+        $databoxVO->setLabel('nl', $data['label_nl']);
+
+        return new \databox($this->app, $this->databoxRepository, $databoxVO);
     }
 
     /**
@@ -55,8 +73,8 @@ class DataboxFactory
     {
         $databoxes = [];
 
-        foreach ($rows as $id => $raw) {
-            $databoxes[$id] = new \databox($this->app, $id, $this->databoxRepository, $raw);
+        foreach ($rows as $id => $row) {
+            $databoxes[$id] = $this->create($id, $row);
         }
 
         return $databoxes;

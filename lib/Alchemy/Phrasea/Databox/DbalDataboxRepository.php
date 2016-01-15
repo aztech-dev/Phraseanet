@@ -13,11 +13,31 @@ use Doctrine\DBAL\Connection;
 
 final class DbalDataboxRepository implements DataboxRepository
 {
+
+    const SELECT_QUERY = <<<EOQ
+SELECT
+    sbas_id, ord, COALESCE(NULL, CONCAT('host=', host, ';port=', port, ';dbname=', dbname)) AS dsn,
+    host, port, dbname, sqlengine, user, pwd, viewname, label_en, label_fr, label_de, label_nl
+FROM
+    sbas
+EOQ;
+
+    const UPDATE_QUERY = <<<EOQ
+UPDATE sbas
+SET ord = :ord, host = :host, port = :port, dbname = :dbname, sqlengine = :sqlengine, user = :user, pwd = :pwd,
+    viewname = :viewname, label_en = :label_en, label_fr = :label_fr, label_de = :label_de, label_nl = :label_nl
+WHERE sbas_id = :sbas_id
+EOQ;
+
     /** @var Connection */
     private $connection;
     /** @var DataboxFactory */
     private $factory;
 
+    /**
+     * @param Connection $connection
+     * @param DataboxFactory $factory
+     */
     public function __construct(Connection $connection, DataboxFactory $factory)
     {
         $this->connection = $connection;
@@ -47,9 +67,24 @@ final class DbalDataboxRepository implements DataboxRepository
         return $this->factory->createMany($this->fetchRows());
     }
 
-    public function save(\databox $databox)
+    public function save(Databox $databox)
     {
-        return true;
+        $statement = $this->connection->prepare(self::UPDATE_QUERY);
+        $statement->execute([
+            'sbas_id'   => $databox->getDataboxId(),
+            'ord'       => $databox->getDisplayIndex(),
+            'viewname'  => $databox->getViewName(),
+            'label_en'  => $databox->getLabel('en'),
+            'label_fr'  => $databox->getLabel('fr'),
+            'label_de'  => $databox->getLabel('de'),
+            'label_nl'  => $databox->getLabel('nl'),
+            'host'      => $databox->getHost(),
+            'port'      => $databox->getPort(),
+            'user'      => $databox->getUser(),
+            'pwd'       => $databox->getPassword(),
+            'dbname'    => $databox->getDatabase(),
+            'sqlengine' => $databox->getType()
+        ]);
     }
 
     /**
@@ -59,10 +94,13 @@ final class DbalDataboxRepository implements DataboxRepository
      */
     private function fetchRow($id)
     {
-        $query = 'SELECT ord, viewname, label_en, label_fr, label_de, label_nl FROM sbas WHERE sbas_id = :id';
+        $query = self::SELECT_QUERY . ' WHERE sbas_id = :id';
+
         $statement = $this->connection->prepare($query);
         $statement->execute(['id' => $id]);
+
         $row = $statement->fetch(\PDO::FETCH_ASSOC);
+
         $statement->closeCursor();
 
         return $row;
@@ -74,15 +112,19 @@ final class DbalDataboxRepository implements DataboxRepository
      */
     private function fetchRows()
     {
-        $query = 'SELECT sbas_id, ord, viewname, label_en, label_fr, label_de, label_nl FROM sbas';
+        $query = self::SELECT_QUERY;
+
         $statement = $this->connection->prepare($query);
         $statement->execute();
+
         $rows = [];
+
         while ($row = $statement->fetch(\PDO::FETCH_ASSOC)) {
             $id = $row['sbas_id'];
             unset($row['sbas_id']);
             $rows[$id] = $row;
         }
+
         $statement->closeCursor();
 
         return $rows;
@@ -107,10 +149,9 @@ final class DbalDataboxRepository implements DataboxRepository
             ':user' => $connection->getUsername(),
             ':password' => $connection->getPassword()
         ]);
-
         $statement->closeCursor();
 
-        $databoxId = (int) $this->connection->lastInsertId();
+        $databoxId = (int)$this->connection->lastInsertId();
 
         return $this->find($databoxId);
     }
