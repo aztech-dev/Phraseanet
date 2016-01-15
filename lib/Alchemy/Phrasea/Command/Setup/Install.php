@@ -66,6 +66,9 @@ class Install extends Command
             ->setDescription("Installs Phraseanet")
             ->addOption('email', null, InputOption::VALUE_OPTIONAL, 'Admin e-mail address', null)
             ->addOption('password', null, InputOption::VALUE_OPTIONAL, 'Admin password', null)
+            ->addOption('db-driver', null, InputOption::VALUE_OPTIONAL, 'Database driver name', 'mysql')
+            ->addOption('db-dsn', null, InputOption::VALUE_OPTIONAL, 'Databox DB server DSN', null)
+            ->addOption('ab-dsn', null, InputOption::VALUE_OPTIONAL, 'Application box DB server DSN', null)
             ->addOption('db-host', null, InputOption::VALUE_OPTIONAL, 'MySQL server host', 'localhost')
             ->addOption('db-port', null, InputOption::VALUE_OPTIONAL, 'MySQL server port', 3306)
             ->addOption('db-user', null, InputOption::VALUE_OPTIONAL, 'MySQL server user', 'phrasea')
@@ -91,7 +94,7 @@ class Install extends Command
 
         $output->writeln(self::WELCOME_MESSAGE);
 
-        if (!$input->getOption('yes') && !$input->getOption('appbox')) {
+        if (!$input->getOption('yes') && !$input->getOption('appbox') && !$input->getOption('ab-dsn')) {
             $continue = $dialog->askConfirmation($output, 'Do you have these two DB handy ? (N/y)', false);
 
             if (! $continue) {
@@ -155,7 +158,7 @@ class Install extends Command
     {
         $info = null;
 
-        if (!$input->getOption('appbox')) {
+        if (!$input->getOption('appbox') && ! $input->getOption('ab-dsn')) {
             $output->writeln("\n<info>--- Database credentials ---</info>\n");
 
             do {
@@ -174,20 +177,14 @@ class Install extends Command
                 ];
             } while (! $this->testConnection($output, 'Application-Box', $info));
         } else {
-            $info = [
-                'host'     => $input->getOption('db-host'),
-                'port'     => $input->getOption('db-port'),
-                'user'     => $input->getOption('db-user'),
-                'password' => $input->getOption('db-password'),
-                'dbname'   => $input->getOption('appbox'),
-            ];
+            $info = $this->parseConnectionOptions($input, 'appbox', 'ab-dsn');
 
             if (! $this->testConnection($output, 'Application-Box', $info)) {
                 throw new RuntimeException('Invalid application box settings');
             }
         }
 
-        return new InstallCommand($info['host'], $info['port'], $info['user'], $info['password'], $info['dbname']);
+        return new InstallCommand($info['host'], $info['port'], $info['user'], $info['password'], $info['dbname'], $info);
     }
 
     private function getDataboxInstallCommand(
@@ -198,7 +195,7 @@ class Install extends Command
     ) {
         $databoxInstallCommand = null;
 
-        if (!$input->getOption('databox')) {
+        if (!$input->getOption('databox') && ! $input->getOption('db-dsn')) {
             do {
                 $dbName = $dialog->ask($output, 'DataBox name, will not be created if empty : ', null);
 
@@ -217,25 +214,19 @@ class Install extends Command
                 }
             } while (! $this->testConnection($output, 'Data-Box', $info));
         } else {
-            $info = [
-                'host'     => $input->getOption('db-host'),
-                'port'     => $input->getOption('db-port'),
-                'user'     => $input->getOption('db-user'),
-                'password' => $input->getOption('db-password'),
-                'dbname'   => $input->getOption('databox'),
-            ];
+            $info = $this->parseConnectionOptions($input, 'databox', 'db-dsn');
 
             if (! $this->testConnection($output, 'Data-Box', $info)) {
                 throw new RuntimeException('Invalid databox settings');
             }
         }
 
-        return new InstallCommand($info['host'], $info['port'], $info['user'], $info['password'], $info['dbname']);
+        return new InstallCommand($info['host'], $info['port'], $info['user'], $info['password'], $info['dbname'], $info);
     }
 
     private function getDataboxTemplate(InputInterface $input, OutputInterface $output, DialogHelper $dialog)
     {
-        if (!$input->getOption('databox')) {
+        if (!$input->getOption('databox') && ! $input->getOption('db-dsn')) {
             do {
                 $template = $dialog->ask($output,
                     'Choose a language template for metadata structure, available are fr (french) and en (english) (en) : ',
@@ -354,5 +345,44 @@ class Install extends Command
         }
 
         return true;
+    }
+
+    /**
+     * @param InputInterface $input
+     * @param $dbArgName
+     * @return array
+     */
+    private function parseConnectionOptions(InputInterface $input, $dbArgName, $useDsnArg = false)
+    {
+        if (! $useDsnArg || ! $input->getOption($useDsnArg)) {
+            $info = [
+                'host' => $input->getOption('db-host'),
+                'port' => $input->getOption('db-port'),
+                'dbname' => $input->getOption($dbArgName),
+                'user' => $input->getOption('db-user'),
+                'password' => $input->getOption('db-password')
+            ];
+        } else {
+            $dsn = $input->getOption($useDsnArg);
+
+            list($driver, $dsnArgs) = explode(':', $dsn, 2);
+            $dsnArgValues = explode(';', $dsnArgs);
+            $info = [
+                'user' => '',
+                'password' => ''
+            ];
+
+            foreach ($dsnArgValues as $argValue) {
+                list ($name, $value) = explode('=', $argValue, 2);
+
+                $info[$name] = $value;
+            }
+
+            $info['driver'] = 'pdo_' . $driver;
+            $info['host'] = '';
+            $info['port'] = 0;
+        }
+
+        return $info;
     }
 }

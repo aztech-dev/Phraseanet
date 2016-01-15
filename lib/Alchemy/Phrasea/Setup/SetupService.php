@@ -96,16 +96,22 @@ class SetupService
 
     private function buildConnection(InstallCommand $installCommand)
     {
+        $parameters = $installCommand->getParameters();
+
+        if (empty($parameters)) {
+            $parameters = [
+                'driver' => 'pdo_mysql',
+                'host' => $installCommand->getDatabaseHost(),
+                'port' => $installCommand->getDatabasePort(),
+                'user' => $installCommand->getDatabaseUser(),
+                'password' => $installCommand->getDatabasePassword(),
+                'dbname' => $installCommand->getDatabaseName()
+            ];
+        }
+
         $connectionFactory = $this->connectionFactory;
         /** @var Connection $connection */
-        $connection = $connectionFactory([
-            'driver' => 'pdo_mysql',
-            'host' => $installCommand->getDatabaseHost(),
-            'port' => $installCommand->getDatabasePort(),
-            'user' => $installCommand->getDatabaseUser(),
-            'password' => $installCommand->getDatabasePassword(),
-            'dbname' => $installCommand->getDatabaseName()
-        ]);
+        $connection = $connectionFactory($parameters);
 
         $connection->connect();
 

@@ -30,19 +30,32 @@ class InstallCommand
     private $databaseName;
 
     /**
+     * @var array
+     */
+    private $params;
+
+    /**
      * @param string $host
      * @param string $port
      * @param string $user
      * @param string $password
      * @param string $name
+     * @param array $params
      */
-    public function __construct($host, $port, $user, $password, $name)
+    public function __construct($host, $port, $user, $password, $name, array $params = [])
     {
         $this->databaseHost = $host;
         $this->databasePort = $port;
         $this->databaseName = $name;
         $this->databaseUser = $user;
         $this->databasePassword = $password;
+
+        $this->params = $params;
+    }
+
+    public function getParameters()
+    {
+        return $this->params;
     }
 
     /**

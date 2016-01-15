@@ -12,6 +12,7 @@ use Alchemy\Phrasea\Databox\Process\Create;
 use Alchemy\Phrasea\Databox\Process\Delete;
 use Alchemy\Phrasea\Databox\Process\DataboxProcessRegistry;
 use Alchemy\Phrasea\Databox\Process\Reindex\ReindexStep;
+use Alchemy\Phrasea\Databox\Process\ReplaceStructure\ReplaceStructureStep;
 use Alchemy\Phrasea\Databox\Process\StepRegistry;
 use Alchemy\Phrasea\Databox\Process\Mount;
 use Alchemy\Phrasea\Databox\Process\Unmount;
@@ -64,6 +65,10 @@ class DataboxServiceProvider implements ServiceProviderInterface
             $processRegistry->registerProcess(Delete\DeleteStep::class, $this->buildDeleteStepRegistry($app));
             $processRegistry->registerProcess(AddAdmin\AddAdminStep::class, $this->buildAddAdminStepRegistry($app));
             $processRegistry->registerProcess(ReindexStep::class, $this->buildReindexStepRegistry($app));
+            $processRegistry->registerProcess(
+                ReplaceStructureStep::class,
+                $this->buildReplaceStructureStepRegistry($app)
+            );
 
             return new DataboxService(
                 $app['repo.databoxes'],
@@ -180,6 +185,17 @@ class DataboxServiceProvider implements ServiceProviderInterface
 
         $registry->addStepFactory(function() {
             return new ReindexStep();
+        });
+
+        return $registry;
+    }
+
+    private function buildReplaceStructureStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () {
+            return new ReplaceStructureStep();
         });
 
         return $registry;

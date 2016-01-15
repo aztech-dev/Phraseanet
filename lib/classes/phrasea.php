@@ -11,6 +11,7 @@
 
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
+use Alchemy\Phrasea\Collection\Reference\CollectionReference;
 use Alchemy\Phrasea\Collection\Reference\CollectionReferenceRepository;
 use Symfony\Component\Translation\TranslatorInterface;
 
@@ -43,10 +44,7 @@ class phrasea
      */
     public static function clear_sbas_params(Application $app)
     {
-        self::$_sbas_params = null;
-        $app->getApplicationBox()->delete_data_from_cache(self::CACHE_SBAS_PARAMS);
-
-        return true;
+        throw new \BadMethodCallException('Sorry, this method is dead.');
     }
 
     /**
@@ -57,27 +55,7 @@ class phrasea
      */
     public static function sbas_params(Application $app)
     {
-        if (self::$_sbas_params) {
-            return self::$_sbas_params;
-        }
-
-        self::$_sbas_params = [];
-
-        $applicationBox = $app->getApplicationBox();
-        $appboxConnection = $applicationBox->get_connection();
-
-        $query = 'SELECT sbas_id, host, port, user, sqlengine, pwd as password, dbname FROM sbas';
-
-        $statement = $appboxConnection->prepare($query);
-        $statement->execute();
-
-        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($rows as $row) {
-            self::$_sbas_params[$row['sbas_id']] = $row;
-        }
-
-        return self::$_sbas_params;
+        throw new \BadMethodCallException('Sorry, this method is dead.');
     }
 
     /**
@@ -191,18 +169,10 @@ class phrasea
      */
     public static function sbas_names($sbas_id, Application $app)
     {
-        if (!self::$_sbas_names) {
-            try {
-                self::$_sbas_names = $app->getApplicationBox()->get_data_from_cache(self::CACHE_SBAS_NAMES);
-            } catch (\Exception $e) {
-                foreach ($app->getDataboxes() as $databox) {
-                    self::$_sbas_names[$databox->get_sbas_id()] = $databox->get_viewname();
-                }
-                $app->getApplicationBox()->set_data_to_cache(self::$_sbas_names, self::CACHE_SBAS_NAMES);
-            }
-        }
-
-        return isset(self::$_sbas_names[$sbas_id]) ? self::$_sbas_names[$sbas_id] : 'Unknown base';
+        return $app->getApplicationBox()
+            ->get_databox($sbas_id)
+            ->getDataObject()
+            ->getViewName(true);
     }
 
     /**
@@ -213,27 +183,10 @@ class phrasea
      */
     public static function sbas_labels($sbas_id, Application $app)
     {
-        if (!self::$_sbas_labels) {
-            try {
-                self::$_sbas_labels = $app->getApplicationBox()->get_data_from_cache(self::CACHE_SBAS_LABELS);
-            } catch (\Exception $e) {
-                foreach ($app->getDataboxes() as $databox) {
-                    self::$_sbas_labels[$databox->get_sbas_id()] = [
-                        'fr' => $databox->get_label('fr'),
-                        'en' => $databox->get_label('en'),
-                        'de' => $databox->get_label('de'),
-                        'nl' => $databox->get_label('nl'),
-                    ];
-                }
-                $app->getApplicationBox()->set_data_to_cache(self::$_sbas_labels, self::CACHE_SBAS_LABELS);
-            }
-        }
-
-        if (isset(self::$_sbas_labels[$sbas_id]) && isset(self::$_sbas_labels[$sbas_id][$app['locale']])) {
-            return self::$_sbas_labels[$sbas_id][$app['locale']];
-        }
-
-        return 'Unknown database';
+        return $app->getApplicationBox()
+            ->get_databox($sbas_id)
+            ->getDataObject()
+            ->getLabels();
     }
 
     /**
@@ -246,6 +199,7 @@ class phrasea
     {
         /** @var CollectionReferenceRepository $repository */
         $referenceRepository = $app['repo.collection-references'];
+        /** @var CollectionReference $reference */
         $reference = $referenceRepository->find($base_id);
 
         if (! $reference) {

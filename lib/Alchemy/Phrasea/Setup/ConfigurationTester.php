@@ -106,7 +106,13 @@ class ConfigurationTester
             return false;
         }
 
-        $upgradable = version::lt($this->app->getApplicationBox()->get_version(), $this->app['phraseanet.version']->getNumber());
+        try {
+            $upgradable = version::lt($this->app->getApplicationBox()->get_version(),
+                $this->app['phraseanet.version']->getNumber());
+        }
+        catch (\Exception $exception) {
+            $upgradable = false;
+        }
 
         if (!$upgradable) {
             foreach ($this->app->getDataboxes() as $databox) {
