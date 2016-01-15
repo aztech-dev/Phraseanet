@@ -14,7 +14,7 @@ class DataboxProcessRegistry
 
     public function registerProcess($stepClass, StepRegistry $registry)
     {
-        if (! class_exists($stepClass)) {
+        if (! $this->isValidTypename($stepClass)) {
             throw new InvalidArgumentException("Class '$stepClass' not found.");
         }
 
@@ -28,5 +28,14 @@ class DataboxProcessRegistry
         }
 
         return $this->registries[$stepClassName]->getSteps();
+    }
+
+    /**
+     * @param $stepClass
+     * @return bool
+     */
+    protected function isValidTypename($stepClass)
+    {
+        return interface_exists($stepClass, true) || class_exists($stepClass, true);
     }
 }

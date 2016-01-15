@@ -11,18 +11,22 @@ class StructureValidator
 
     const INVALID_SUBDEF_CLASS = 'ERREUR : La classe de subdef est necessaire et egal a "thumbnail","preview" ou "document"';
 
+    /**
+     * @param \databox $databox
+     * @return StructureErrorCollection
+     */
     public function validateDataboxStructure(\databox $databox)
     {
-        return $this->validateStructure($databox->get_structure());
+        return $this->validateStructure($databox->getStructure());
     }
 
     /**
-     * @param string $structure
+     * @param Structure $structure
      * @return StructureErrorCollection
      */
-    public function validateStructure($structure)
+    public function validateStructure(Structure $structure)
     {
-        $structureDom = simplexml_load_string($structure);
+        $structureDom = $structure->getSimpleXmlElement();
 
         /** @var \SimpleXMLElement[] $subdefGroup */
         $subdefGroup = $structureDom->subdefs[0];
@@ -48,13 +52,13 @@ class StructureValidator
                 $subdefName = trim(mb_strtolower((string) $subdef->attributes()->name));
                 $subdefClass = trim(mb_strtolower((string) $subdef->attributes()->class));
 
-                if ($this->nameIsAlreadyUsed($subdefName, $availableSubdefs, $subdefGroupName)) {
+                if ($this->isNameAlreadyUsed($subdefName, $availableSubdefs, $subdefGroupName)) {
                     $errors->addErrorMessage(self::NON_UNIQUE_NAME);
 
                     continue;
                 }
 
-                if ($this->subdefClassIsNotValid($subdefClass)) {
+                if ($this->isInvalidSubdefClass($subdefClass)) {
                     $errors->addErrorMessage(self::INVALID_SUBDEF_CLASS);
 
                     continue;
@@ -73,7 +77,7 @@ class StructureValidator
      * @param $subdefGroupName
      * @return bool
      */
-    private function nameIsAlreadyUsed($subdefName, $availableSubdefs, $subdefGroupName)
+    private function isNameAlreadyUsed($subdefName, $availableSubdefs, $subdefGroupName)
     {
         return $subdefName == '' || isset($availableSubdefs[$subdefGroupName][$subdefName]);
     }
@@ -82,7 +86,7 @@ class StructureValidator
      * @param $subdefClass
      * @return bool
      */
-    private function subdefClassIsNotValid($subdefClass)
+    private function isInvalidSubdefClass($subdefClass)
     {
         return !in_array($subdefClass, ['thumbnail', 'preview', 'document']);
     }

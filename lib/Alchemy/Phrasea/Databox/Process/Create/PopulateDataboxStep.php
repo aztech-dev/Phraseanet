@@ -33,5 +33,7 @@ class PopulateDataboxStep extends AbstractCreateStep
 
         $databox->insert_datas();
         $databox->setNewStructure($dataTemplate, $databoxStructure);
+
+        return $databox;
     }
 }

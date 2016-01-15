@@ -79,7 +79,12 @@ abstract class AbstractCreateStep implements CreateStep
     public function runNext(Connection $connection, \SplFileInfo $dataTemplate)
     {
         $nextStep = $this->getNext();
+        $stepResult = $nextStep->execute($connection, $dataTemplate);
 
-        return $nextStep->execute($connection, $dataTemplate);
+        if (! $stepResult instanceof \databox) {
+            throw new \RuntimeException(sprintf("Step '%s' did not return a databox.", get_class($nextStep)));
+        }
+
+        return $stepResult;
     }
 }

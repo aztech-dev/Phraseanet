@@ -385,7 +385,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
     {
         $this->collectionVO->setPublicWatermark($publi);
         $this->getCollectionRepository()->save($this->collectionVO);
-        $this->app['repo.collections-registry']->purgeRegistry();
+        $this->collectionRepositoryRegistry->purgeRegistry();
 
         return $this;
     }
@@ -406,7 +406,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         }
 
         $this->getCollectionRepository()->save($this->collectionVO);
-        $this->app['repo.collections-registry']->purgeRegistry();
+        $this->collectionRepositoryRegistry->purgeRegistry();
 
         $this->dispatch(CollectionEvents::NAME_CHANGED,
             new NameChangedEvent(
@@ -430,7 +430,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->collectionVO->setLabel($code, $label);
 
         $this->getCollectionRepository()->save($this->collectionVO);
-        $this->app['repo.collections-registry']->purgeRegistry();
+        $this->collectionRepositoryRegistry->purgeRegistry();
 
         $this->dispatch(CollectionEvents::LABEL_CHANGED, new LabelChangedEvent($this, array(
             "lng"=>$code,
@@ -467,7 +467,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->reference->setDisplayIndex($ord);
 
         $this->getReferenceRepository()->save($this->reference);
-        $this->app['repo.collections-registry']->purgeRegistry();
+        $this->collectionRepositoryRegistry->purgeRegistry();
 
         return $this;
     }
@@ -523,7 +523,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->collectionVO->setPreferences($dom->saveXML());
         $this->getCollectionRepository()->save($this->collectionVO);
 
-        $this->app['repo.collections-registry']->purgeRegistry();
+        $this->collectionRepositoryRegistry->purgeRegistry();
 
         $this->dispatch(
             CollectionEvents::SETTINGS_CHANGED,

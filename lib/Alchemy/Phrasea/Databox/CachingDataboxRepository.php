@@ -23,6 +23,12 @@ final class CachingDataboxRepository implements DataboxRepository
     /** @var DataboxFactory */
     private $factory;
 
+    /**
+     * @param DataboxRepository $repository
+     * @param Cache $cache
+     * @param string $cacheKey
+     * @param DataboxFactory $factory
+     */
     public function __construct(DataboxRepository $repository, Cache $cache, $cacheKey, DataboxFactory $factory)
     {
         $this->repository = $repository;
@@ -31,6 +37,10 @@ final class CachingDataboxRepository implements DataboxRepository
         $this->factory = $factory;
     }
 
+    /**
+     * @param int $id
+     * @return \databox
+     */
     public function find($id)
     {
         $rows = $this->cache->fetch($this->cacheKey);
@@ -42,6 +52,9 @@ final class CachingDataboxRepository implements DataboxRepository
         return $this->repository->find($id);
     }
 
+    /**
+     * @return \databox[]
+     */
     public function findAll()
     {
         $rows = $this->cache->fetch($this->cacheKey);
@@ -57,11 +70,13 @@ final class CachingDataboxRepository implements DataboxRepository
         return $databoxes;
     }
 
-    public function save(\databox $databox)
+    /**
+     * @param Databox $databox
+     */
+    public function save(Databox $databox)
     {
-        $this->cache->delete($this->cacheKey);
-
         $this->repository->save($databox);
+        $this->cache->delete($this->cacheKey);
     }
 
     /**

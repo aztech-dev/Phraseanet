@@ -31,6 +31,12 @@ class Structure
     public function __construct($rawStructure)
     {
         $this->rawStructure = $rawStructure;
+
+        if (trim($this->rawStructure) == '') {
+            $this->simpleXmlElement = false;
+            $this->domDocument = false;
+            $this->domXpath = false;
+        }
     }
 
     public function getRawStructure()

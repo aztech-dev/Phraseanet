@@ -203,6 +203,6 @@ class ORMServiceProvider implements ServiceProviderInterface
 
     public function boot(Application $app)
     {
-        // @todo Bootstrap all databox entity managers
+        // NO-OP
     }
 }

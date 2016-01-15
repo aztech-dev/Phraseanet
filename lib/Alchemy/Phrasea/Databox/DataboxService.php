@@ -16,6 +16,8 @@ use Alchemy\Phrasea\Databox\Process\Mount\AbstractMountStep;
 use Alchemy\Phrasea\Databox\Process\Mount\MountStep;
 use Alchemy\Phrasea\Databox\Process\StepRegistry;
 use Alchemy\Phrasea\Databox\Process\Unmount\UnmountStep;
+use Alchemy\Phrasea\Exception\RuntimeException;
+use Assert\Assertion;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -79,6 +81,10 @@ class DataboxService
 
         $databox = AbstractCreateStep::runSteps($connection, $dataTemplate, $steps);
 
+        if ($databox == null) {
+            throw new RuntimeException('Databox create process did not return a databox.');
+        }
+
         $this->eventDispatcher->dispatch(DataboxEvents::CREATED, new CreatedEvent($databox));
 
         return $databox;
@@ -98,6 +104,11 @@ class DataboxService
         $steps = $this->processRegistry->getProcessSteps(MountStep::class);
 
         $databox = AbstractMountStep::runSteps($databoxConnection, $steps);
+
+        if ($databox == null) {
+            throw new RuntimeException('Databox mount process did not return a databox.');
+        }
+
 
         $this->eventDispatcher->dispatch(DataboxEvents::MOUNTED, new MountedEvent($databox));
 

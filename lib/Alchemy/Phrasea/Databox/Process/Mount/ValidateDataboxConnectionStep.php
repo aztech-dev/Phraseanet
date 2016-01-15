@@ -27,5 +27,7 @@ class ValidateDataboxConnectionStep extends AbstractMountStep
     public function execute(Connection $connection)
     {
         DataboxConnectionValidator::validateConnection($this->applicationBox, $connection);
+
+        return $this->runNext($connection);
     }
 }
