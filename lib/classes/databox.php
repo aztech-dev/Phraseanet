@@ -25,7 +25,6 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\Statement;
 use Symfony\Component\HttpFoundation\File\File;
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
-use Alchemy\Phrasea\Core\Event\Databox\StructureChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\TouChangedEvent;
 
@@ -900,18 +899,17 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_cterms()
     {
-        if ($this->cterms) {
-            return $this->cterms;
+        if (! $this->cterms) {
+            $sql = "SELECT value FROM pref WHERE prop='cterms'";
+            $stmt = $this->get_connection()->prepare($sql);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor();
+
+            if ($row) {
+                $this->cterms = $row['value'];
+            }
         }
-
-        $sql = "SELECT value FROM pref WHERE prop='cterms'";
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        if ($row)
-            $this->cterms = $row['value'];
 
         return $this->cterms;
     }

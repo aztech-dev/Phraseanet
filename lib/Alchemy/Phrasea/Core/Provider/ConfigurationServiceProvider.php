@@ -11,6 +11,7 @@
 
 namespace Alchemy\Phrasea\Core\Provider;
 
+use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Core\Configuration\AccessRestriction;
 use Alchemy\Phrasea\Core\Configuration\Configuration;
 use Alchemy\Phrasea\Core\Configuration\DisplaySettingService;
@@ -31,14 +32,20 @@ class ConfigurationServiceProvider implements ServiceProviderInterface
         $app['phraseanet.configuration.yaml-parser'] = $app->share(function (SilexApplication $app) {
             return new Yaml();
         });
+
         $app['phraseanet.configuration.compiler'] = $app->share(function (SilexApplication $app) {
             return new Compiler();
         });
-        $app['phraseanet.configuration.config-path'] = function (SilexApplication $app) {
-            return sprintf('%s/config/configuration.yml', $app['root.path']);
+
+        $app['phraseanet.configuration.config-path'] = function (Application $app) {
+            return [
+                sprintf('%s/config/configuration.yml', $app['root.path']),
+                sprintf('%s/config/configuration.%s.yml', $app['root.path'], $app->getEnvironment()),
+            ];
         };
-        $app['phraseanet.configuration.config-compiled-path'] = function (SilexApplication $app) {
-            return sprintf('%s/config/configuration-compiled.php', $app['root.path']);
+
+        $app['phraseanet.configuration.config-compiled-path'] = function (Application $app) {
+            return sprintf('%s/config/configuration-compiled.' . $app->getEnvironment() . '.php', $app['root.path']);
         };
 
         $app['configuration.store'] = $app->share(function (SilexApplication $app) {

@@ -58,15 +58,7 @@ class CreateConfigurationStep implements Step
         $config['main']['binaries'] = $initializeEnvironmentCommand->getBinaryPaths();
         $config['main']['key'] = $this->randomGenerator->generateString(16);
 
-        $config['main']['database'] = [
-            'host' => $appboxConnection->getHost(),
-            'port' => $appboxConnection->getPort(),
-            'user' => $appboxConnection->getUsername(),
-            'password' => $appboxConnection->getPassword(),
-            'dbname' => $appboxConnection->getDatabase(),
-            'driver' => $appboxConnection->getDriver()->getName(),
-            'charset' => 'UTF8'
-        ];
+        $config['main']['database'] = $appboxConnection->getParams();
 
         $config['main']['storage'] = [
             'cache' => realpath(__DIR__ . '/../../../../cache'),

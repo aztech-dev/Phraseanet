@@ -37,9 +37,9 @@ class Configuration implements ConfigurationInterface
     {
         $this->parser = $yaml;
         $this->compiler = $compiler;
-        $this->config = $config;
+        $this->config = is_array($config) ? $config : [ $config ];
         $this->compiled = $compiled;
-        $this->autoReload = (Boolean) $autoReload;
+        $this->autoReload = (bool) $autoReload;
     }
 
     /**
@@ -130,12 +130,32 @@ class Configuration implements ConfigurationInterface
             if (!$this->isSetup()) {
                 throw new RuntimeException('Configuration is not set up');
             }
-            $this->writeCacheConfig($this->compiler->compile(
-                $this->parser->parse($this->loadFile($this->config))
-            ));
+            $this->writeCacheConfig($this->compiler->compile($this->parseConfig()));
         }
 
         return $this->cache = require $this->compiled;
+    }
+
+    private function parseConfig()
+    {
+        $config = [];
+
+        reset($this->config);
+
+        foreach ($this->config as $configFile) {
+            if (! file_exists($configFile)) {
+                continue;
+            }
+
+            $config = array_replace_recursive($config, $this->parser->parse($this->loadFile($configFile)));
+        }
+
+        return $config;
+    }
+
+    private function getWritableFile()
+    {
+        return end($this->config);
     }
 
     /**
@@ -144,7 +164,7 @@ class Configuration implements ConfigurationInterface
     public function setConfig(array $config)
     {
         $this->cache = $config;
-        $this->dumpFile($this->config, $this->parser->dump($config, 7));
+        $this->dumpFile($this->getWritableFile(), $this->parser->dump($config, 7));
         $this->writeCacheConfig($this->compiler->compile($config));
 
         return $this;
@@ -156,9 +176,7 @@ class Configuration implements ConfigurationInterface
     public function compileAndWrite()
     {
         $this->cache = null;
-        $this->writeCacheConfig($this->compiler->compile(
-            $this->parser->parse($this->loadFile($this->config))
-        ));
+        $this->writeCacheConfig($this->compiler->compile($this->getConfig()));
 
         return $this;
     }
@@ -170,7 +188,7 @@ class Configuration implements ConfigurationInterface
     {
         $this->cache = null;
         foreach ([
-            $this->config,
+            $this->getWritableFile(),
             $this->compiled,
         ] as $file) {
             $this->eraseFile($file);
@@ -183,7 +201,7 @@ class Configuration implements ConfigurationInterface
     public function initialize()
     {
         $this->delete();
-        $this->dumpFile($this->config, $this->loadFile(__DIR__ . static::CONFIG_REF), 0600);
+        $this->dumpFile($this->getWritableFile(), $this->loadFile(__DIR__ . static::CONFIG_REF), 0600);
 
         // force rewrite
         $this->getConfig();
@@ -196,7 +214,7 @@ class Configuration implements ConfigurationInterface
      */
     public function isSetup()
     {
-        return file_exists($this->config);
+        return file_exists($this->getWritableFile());
     }
 
     private function isAutoReload()
@@ -216,7 +234,7 @@ class Configuration implements ConfigurationInterface
 
     private function isConfigFresh()
     {
-        return @filemtime($this->config) <= @filemtime($this->compiled);
+        return @filemtime($this->getWritableFile()) <= @filemtime($this->compiled);
     }
 
     private function loadFile($file)
