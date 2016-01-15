@@ -10,7 +10,6 @@
  */
 
 use Alchemy\Phrasea\Application;
-use Alchemy\Phrasea\Core\Database\DatabaseMaintenanceService;
 use Alchemy\Phrasea\Core\Version as PhraseaVersion;
 use Doctrine\DBAL\Connection;
 
@@ -185,7 +184,7 @@ abstract class base implements cache_cacheableInterface
 
     protected function upgradeDb($applyPatches)
     {
-        $service = new DatabaseMaintenanceService($this->app, $this->connection);
+        $service = $this->app['databoxes.maintenance_service']($this->connection);
 
         return $service->upgradeDatabase($this, $applyPatches);
     }
@@ -222,7 +221,7 @@ abstract class base implements cache_cacheableInterface
     {
         $this->load_schema();
 
-        $service = new DatabaseMaintenanceService($this->app, $this->connection);
+        $service = $this->app['databoxes.maintenance_service']($this->connection);
 
         foreach ($this->get_schema()->tables->table as $table) {
             $service->createTable($table);
@@ -235,7 +234,7 @@ abstract class base implements cache_cacheableInterface
 
     public function apply_patches($from, $to, $post_process, Application $app)
     {
-        $service = new DatabaseMaintenanceService($this->app, $this->connection);
+        $service = $this->app['databoxes.maintenance_service']($this->connection);
 
         return $service->applyPatches($this, $from, $to, $post_process, $app);
     }

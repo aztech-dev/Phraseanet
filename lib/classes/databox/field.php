@@ -156,7 +156,7 @@ class databox_field implements cache_cacheableInterface
         $this->VocabularyType = $row['VocabularyControlType'];
         $this->VocabularyRestriction = (bool)$row['RestrictToVocabularyControl'];
 
-        if (isset($row['dces_element'])) {
+        if (! empty($row['dces_element'])) {
             $class = self::$knownDCES[$row['dces_element']];
             $this->dces_element = new $class();
         }

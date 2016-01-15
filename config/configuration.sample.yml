@@ -14,10 +14,6 @@ main:
         dbname: ab_test
         driver: pdo_mysql
         charset: UTF8
-    database-test:
-        driver: pdo_sqlite
-        path: '/tmp/db.sqlite'
-        charset: UTF8
     cache:
         type: MemcacheCache
         options:

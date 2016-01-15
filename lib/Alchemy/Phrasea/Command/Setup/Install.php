@@ -66,16 +66,15 @@ class Install extends Command
             ->setDescription("Installs Phraseanet")
             ->addOption('email', null, InputOption::VALUE_OPTIONAL, 'Admin e-mail address', null)
             ->addOption('password', null, InputOption::VALUE_OPTIONAL, 'Admin password', null)
-            ->addOption('db-driver', null, InputOption::VALUE_OPTIONAL, 'Database driver name', 'mysql')
-            ->addOption('db-dsn', null, InputOption::VALUE_OPTIONAL, 'Databox DB server DSN', null)
             ->addOption('ab-dsn', null, InputOption::VALUE_OPTIONAL, 'Application box DB server DSN', null)
-            ->addOption('db-host', null, InputOption::VALUE_OPTIONAL, 'MySQL server host', 'localhost')
-            ->addOption('db-port', null, InputOption::VALUE_OPTIONAL, 'MySQL server port', 3306)
-            ->addOption('db-user', null, InputOption::VALUE_OPTIONAL, 'MySQL server user', 'phrasea')
-            ->addOption('db-password', null, InputOption::VALUE_OPTIONAL, 'MySQL server password', null)
+            ->addOption('db-dsn', null, InputOption::VALUE_OPTIONAL, 'Databox DB server DSN', null)
+            ->addOption('db-host', null, InputOption::VALUE_OPTIONAL, 'MySQL server host (deprecated)', 'localhost')
+            ->addOption('db-port', null, InputOption::VALUE_OPTIONAL, 'MySQL server port (deprecated)', 3306)
+            ->addOption('db-user', null, InputOption::VALUE_OPTIONAL, 'MySQL server user (deprecated)', 'phrasea')
+            ->addOption('db-password', null, InputOption::VALUE_OPTIONAL, 'MySQL server password (deprecated)', null)
             ->addOption('db-template', null, InputOption::VALUE_OPTIONAL, 'Metadata structure language template (available are fr (french) and en (english))', null)
-            ->addOption('databox', null, InputOption::VALUE_OPTIONAL, 'Database name for the DataBox', null)
-            ->addOption('appbox', null, InputOption::VALUE_OPTIONAL, 'Database name for the ApplicationBox', null)
+            ->addOption('databox', null, InputOption::VALUE_OPTIONAL, 'Database name for the DataBox (deprecated)', null)
+            ->addOption('appbox', null, InputOption::VALUE_OPTIONAL, 'Database name for the ApplicationBox (deprecated)', null)
             ->addOption('data-path', null, InputOption::VALUE_OPTIONAL, 'Path to data repository', realpath(__DIR__ . '/../../../../../datas'))
             ->addOption('server-name', null, InputOption::VALUE_OPTIONAL, 'Server name')
             ->addOption('indexer', null, InputOption::VALUE_OPTIONAL, 'Path to Phraseanet Indexer', 'auto')
@@ -340,6 +339,8 @@ class Install extends Command
             $output->writeln("\n\t<info>$connectionType : Connection successful !</info>\n");
         } catch (\Exception $e) {
             $output->writeln("\n\t<error>Invalid connection parameters</error>\n");
+
+            var_dump($e->getMessage(), $e->getTraceAsString());
 
             return false;
         }

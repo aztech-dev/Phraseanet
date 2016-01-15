@@ -181,6 +181,8 @@ class databox extends base implements ThumbnailedElement
 
         $service->replaceDataboxStructure($this, $dom_struct);
 
+        $this->structure = new Structure($dom_struct->saveXML());
+
         return $this;
     }
 
@@ -233,10 +235,10 @@ class databox extends base implements ThumbnailedElement
     {
         $structure = $this->getStructure();
         $sxe = $structure->getSimpleXmlElement();
+        $dom_struct = $structure->getDomDocument();
+        $xp_struct = $structure->getDomXpath();
 
         foreach ($sxe->description->children() as $fname => $field) {
-            $dom_struct = $structure->getDomDocument();
-            $xp_struct = $structure->getDomXpath();
             $fname = (string) $fname;
             $src = trim(isset($field['src']) ? str_replace('/rdf:RDF/rdf:Description/', '', $field['src']) : '');
             $meta_id = isset($field['meta_id']) ? $field['meta_id'] : null;
@@ -249,8 +251,6 @@ class databox extends base implements ThumbnailedElement
             if ($nodes->length > 0) {
                 $nodes->item(0)->parentNode->removeChild($nodes->item(0));
             }
-
-            $this->saveStructure($dom_struct);
 
             $type = isset($field['type']) ? $field['type'] : 'string';
             $type = in_array($type, [
@@ -281,6 +281,8 @@ class databox extends base implements ThumbnailedElement
             } catch (\Exception $e) {
             }
         }
+
+        $this->saveStructure($dom_struct);
 
         return $this;
     }
@@ -885,7 +887,7 @@ class databox extends base implements ThumbnailedElement
 
             $this->_dom_cterms = false;
 
-            if ($dom->loadXML($this->get_cterms()) !== false) {
+            if ($this->cterms  = $this->get_cterms()&& $dom->loadXML($this->cterms) !== false) {
                 $this->_dom_cterms = $dom;
             }
         }

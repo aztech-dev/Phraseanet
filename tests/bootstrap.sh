@@ -32,7 +32,8 @@ CREATE SCHEMA IF NOT EXISTS db_test;
 '
 if ! ./bin/developer system:uninstall --env=test > /dev/null 2>&1
 then
-    rm -f config/configuration.yml config/configuration-compiled.php
+    rm -f config/configuration.test.yml config/configuration-compiled.test.php
+    rm -f /tmp/phraseanet.test.databox.sqlite /tmp/phraseanet.test.appbox.sqlite
 fi
 
 WORKDIR=`pwd`;
@@ -53,6 +54,7 @@ case "$INSTALL_MODE" in
     install)
         ;;
 esac
+
 ./bin/developer ini:setup-tests-dbs --env=test $VERBOSITY
 ./bin/console searchengine:index:create --env=test $VERBOSITY
 ./bin/developer phraseanet:regenerate-sqlite --env=test $VERBOSITY

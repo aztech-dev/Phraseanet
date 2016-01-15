@@ -26,6 +26,7 @@ use Alchemy\Phrasea\Core\Event\Acl\MasksOnBaseChangedEvent;
 use Alchemy\Phrasea\Core\Event\Acl\RightsToBaseChangedEvent;
 use Alchemy\Phrasea\Core\Event\Acl\RightsToSbasChangedEvent;
 use Alchemy\Phrasea\Core\Event\Acl\SysadminChangedEvent;
+use Doctrine\DBAL\Query\QueryBuilder;
 
 
 class ACL implements cache_cacheableInterface
@@ -1430,21 +1431,33 @@ class ACL implements cache_cacheableInterface
 
     public function update_download_restrictions()
     {
-        $sql = 'UPDATE basusr SET remain_dwnld = month_dwnld_max
-            WHERE actif = 1
-            AND usr_id = :usr_id
-            AND MONTH(lastconn) != MONTH(NOW()) AND restrict_dwnld = 1';
-        $stmt = $this->app->getApplicationBox()->get_connection()->prepare($sql);
-        $stmt->execute([':usr_id' => $this->user->getId()]);
-        $stmt->closeCursor();
+        $queryBuilder = new QueryBuilder($this->app->getApplicationBox()->get_connection());
+        $exprBuilder = $queryBuilder->expr();
 
-        $sql = "UPDATE basusr SET lastconn=now()
-            WHERE usr_id = :usr_id AND actif = 1";
-        $stmt = $this->app->getApplicationBox()->get_connection()->prepare($sql);
-        $stmt->execute([':usr_id' => $this->user->getId()]);
-        $stmt->closeCursor();
+        $queryBuilder->update('basusr')
+            ->set('remain_dwnld', 'month_dwnld_max')
+            ->where('actif = 1')
+            ->andWhere('restrict_dwnld = 1')
+            ->andWhere('usr_id = :usr_id')
+            ->andWhere($exprBuilder->lt('lastconn', ':start_current_month'))
+            ->setParameters([
+                ':usr_id' => $this->user->getId(),
+                ':start_current_month' => (new \DateTime())->format('Y-m-01 00:00:00')]
+            );
 
-        unset($stmt);
+        $queryBuilder->execute();
+
+        $queryBuilder = new QueryBuilder($this->app->getApplicationBox()->get_connection());
+        $queryBuilder->update('basusr')
+            ->set('lastconn', ':now')
+            ->where('usr_id = :usr_id')
+            ->andWhere('actif = 1')
+            ->setParameters([
+                ':usr_id' => $this->user->getId(),
+                ':now' => (new \DateTime())->format('Y-m-d H:i:s')]
+            );
+
+        $queryBuilder->execute();
         $this->delete_data_from_cache(self::CACHE_RIGHTS_BAS);
 
         $this->app['dispatcher']->dispatch(

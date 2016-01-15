@@ -66,6 +66,7 @@ class UserManager
     public function update(User $user, $flush = true)
     {
         $this->objectManager->persist($user);
+
         if ($flush) {
             $this->objectManager->flush();
         }

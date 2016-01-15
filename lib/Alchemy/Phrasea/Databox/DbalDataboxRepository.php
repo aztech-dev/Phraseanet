@@ -16,7 +16,7 @@ final class DbalDataboxRepository implements DataboxRepository
 
     const SELECT_QUERY = <<<EOQ
 SELECT
-    sbas_id, ord, COALESCE(NULL, CONCAT('host=', host, ';port=', port, ';dbname=', dbname)) AS dsn,
+    sbas_id, ord, dsn,
     host, port, dbname, sqlengine, user, pwd, viewname, label_en, label_fr, label_de, label_nl
 FROM
     sbas
@@ -137,17 +137,26 @@ EOQ;
      */
     public function mount(Connection $connection)
     {
-        $sql = 'INSERT INTO sbas (sbas_id, ord, host, port, dbname, sqlengine, user, pwd)
-              VALUES (null, :ord, :host, :port, :dbname, "MYSQL", :user, :password)';
+        $sql = 'INSERT INTO sbas (sbas_id, ord, dsn, host, port, dbname, sqlengine, user, pwd)
+              VALUES (null, :ord, :dsn, :host, :port, :dbname, :sqlengine, :user, :password)';
+
+        $driverName = str_replace('pdo_', '', $connection->getDriver()->getName());
+        $connectionParams = [];
+
+        foreach ($connection->getParams() as $name => $value) {
+            $connectionParams[] = $name . '=' . $value;
+        }
 
         $statement = $this->connection->prepare($sql);
         $statement->execute([
             ':ord' => $this->getNewDataboxOrdinal(),
-            ':host' => $connection->getHost(),
-            ':port' => $connection->getPort(),
-            ':dbname' => $connection->getDatabase(),
+            ':host' => '',
+            ':port' => '',
+            ':dbname' => '',
             ':user' => $connection->getUsername(),
-            ':password' => $connection->getPassword()
+            ':password' => $connection->getPassword(),
+            ':dsn' => $driverName . ':' . implode(';', $connectionParams),
+            ':sqlengine' => $driverName
         ]);
         $statement->closeCursor();
 
