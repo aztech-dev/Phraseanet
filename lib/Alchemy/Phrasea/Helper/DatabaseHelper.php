@@ -34,10 +34,13 @@ class DatabaseHelper extends Helper
             'dbname'   => $db_name,
         ]);
 
+        $caughtException = null;
+
         try {
             $connection->connect();
             $dbOK = true;
         } catch (\Exception $exception) {
+            $caughtException = $exception;
             $dbOK = false;
         }
 
@@ -64,7 +67,7 @@ class DatabaseHelper extends Helper
 
         unset($connection);
 
-        return [
+        $connectionStatus = [
             'connection' => $dbOK,
             'innodb'     => true,
             'database'   => $dbOK,
@@ -72,5 +75,17 @@ class DatabaseHelper extends Helper
             'is_appbox'  => $is_appbox,
             'is_databox' => $is_databox
         ];
+
+        if ($caughtException !== null) {
+            $connectionStatus['exception'] = [
+                'message' => $caughtException->getMessage(),
+                'line' => $caughtException->getLine(),
+                'file' => $caughtException->getFile(),
+                'trace' => $caughtException->getTraceAsString(),
+                'type' => get_class($caughtException)
+            ];
+        }
+
+        return $connectionStatus;
     }
 }

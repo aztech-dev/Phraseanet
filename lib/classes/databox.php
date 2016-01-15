@@ -18,7 +18,6 @@ use Alchemy\Phrasea\Databox\Databox as DataboxVO;
 use Alchemy\Phrasea\Databox\DataboxRepository;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
 use Alchemy\Phrasea\Databox\Structure\Structure;
-use Alchemy\Phrasea\Exception\InvalidArgumentException;
 use Alchemy\Phrasea\Model\Entities\User;
 use Alchemy\Phrasea\Status\StatusStructure;
 use Alchemy\Phrasea\Status\StatusStructureFactory;
@@ -26,8 +25,6 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\Statement;
 use Symfony\Component\HttpFoundation\File\File;
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
-use Alchemy\Phrasea\Core\Event\Databox\DeletedEvent;
-use Alchemy\Phrasea\Core\Event\Databox\ReindexAskedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\StructureChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\TouChangedEvent;
@@ -150,7 +147,6 @@ class databox extends base implements ThumbnailedElement
 
         return $this->structure;
     }
-
     public function setNewStructure(\SplFileInfo $data_template, $path_doc)
     {
         if ( ! file_exists($data_template->getPathname())) {
@@ -177,45 +173,14 @@ class databox extends base implements ThumbnailedElement
      *
      * @param  DOMDocument $dom_struct
      * @return databox
+     * @deprecated Use DataboxService::replaceDataboxStructure() instead
      */
     public function saveStructure(DOMDocument $dom_struct)
     {
-        $old_structure = $this->get_dom_structure();
+        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
+        $service = $this->app['databoxes.service'];
 
-        $dom_struct->documentElement
-            ->setAttribute("modification_date", $now = date("YmdHis"));
-
-        $sql = "UPDATE pref SET value= :structure, updated_on= :now WHERE prop='structure'";
-
-        $this->structure = $dom_struct->saveXML();
-
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute(
-            [
-                ':structure' => $this->structure,
-                ':now'       => $now
-            ]
-        );
-        $stmt->closeCursor();
-
-        $this->structure = null;
-        $this->meta_struct = null;
-
-        $this->get_appbox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
-        $this->delete_data_from_cache(self::CACHE_STRUCTURE);
-        $this->delete_data_from_cache(self::CACHE_META_STRUCT);
-
-        $this->databoxRepository->save($this->databox);
-
-        $this->app['dispatcher']->dispatch(
-            DataboxEvents::STRUCTURE_CHANGED,
-            new StructureChangedEvent(
-                $this,
-                array(
-                    'dom_before'=>$old_structure
-                )
-            )
-        );
+        $service->replaceDataboxStructure($this, $dom_struct);
 
         return $this;
     }
@@ -372,7 +337,7 @@ class databox extends base implements ThumbnailedElement
                 $this->meta_struct = null;
                 break;
             case self::CACHE_STRUCTURE:
-                $this->_dom_structure = $this->_xpath_structure = $this->structure = $this->_sxml_structure = null;
+                $this->structure = null;
                 break;
             case self::CACHE_THESAURUS:
                 $this->thesaurus = null;
@@ -426,15 +391,11 @@ class databox extends base implements ThumbnailedElement
 
     public function get_label($code, $substitute = true)
     {
-        if (!array_key_exists($code, $this->labels)) {
-            throw new InvalidArgumentException(sprintf('Code %s is not defined', $code));
+        if ($substitute) {
+            return $this->databox->getLabelOrDefault($code, $this->databox->getViewName());
         }
 
-        if ($substitute) {
-            return isset($this->labels[$code]) ? $this->labels[$code] : $this->get_viewname();
-        } else {
-            return $this->labels[$code];
-        }
+        return $this->databox->getLabel($code);
     }
 
     /**
@@ -588,6 +549,9 @@ class databox extends base implements ThumbnailedElement
         return $ret;
     }
 
+    /**
+     * @deprecated DataboxService::unmountDatabox() instead
+     */
     public function unmount_databox()
     {
         /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
@@ -638,28 +602,16 @@ class databox extends base implements ThumbnailedElement
         return $this->subdef_struct;
     }
 
+    /**
+     * @throws \Doctrine\DBAL\DBALException
+     * @deprecated Use DataboxService::deleteDatabox() instead
+     */
     public function delete()
     {
-        $old_dbname = $this->get_dbname();
+        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
+        $service = $this->app['databoxes.service'];
 
-        $sql = 'DROP DATABASE `' . $this->get_dbname() . '`';
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $stmt->closeCursor();
-
-        $this->get_appbox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
-
-        $this->app['dispatcher']->dispatch(
-            DataboxEvents::DELETED,
-            new DeletedEvent(
-                null,
-                array(
-                    'dbname'=>$old_dbname
-                )
-            )
-        );
-
-        return;
+        $service->deleteDatabox($this);
     }
 
     public function get_serialized_server_info()
@@ -699,6 +651,7 @@ class databox extends base implements ThumbnailedElement
         $builder
             ->select('c.coll_id', 'c.asciiname')
             ->from('coll', 'c');
+
         if (count($colls) > 0) {
             $builder
                 ->where($builder->expr()->notIn('c.coll_id', [':colls']))
@@ -844,57 +797,14 @@ class databox extends base implements ThumbnailedElement
      *
      * @param  User    $user
      * @return databox
+     * @deprecated Use DataboxService::addDataboxAdmin() instead
      */
     public function registerAdmin(User $user)
     {
-        $conn = $this->get_appbox()->get_connection();
+        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
+        $service = $this->app['databoxes.service'];
 
-        $this->app->getAclForUser($user)
-            ->give_access_to_sbas([$this->id])
-            ->update_rights_to_sbas(
-                $this->id, [
-                'bas_manage'        => 1, 'bas_modify_struct' => 1,
-                'bas_modif_th'      => 1, 'bas_chupub'        => 1
-                ]
-        );
-
-        $sql = "SELECT * FROM coll";
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        $sql = "INSERT INTO bas
-                            (base_id, active, server_coll_id, sbas_id) VALUES
-                            (null,'1', :coll_id, :sbas_id)";
-        $stmt = $conn->prepare($sql);
-
-        $base_ids = [];
-        foreach ($rs as $row) {
-            try {
-                $stmt->execute([':coll_id'  => $row['coll_id'], ':sbas_id'  => $this->id]);
-                $base_ids[] = $base_id = $conn->lastInsertId();
-
-                if ( ! empty($row['logo'])) {
-                    file_put_contents($this->app['root.path'] . '/config/minilogos/' . $base_id, $row['logo']);
-                }
-            } catch (\Exception $e) {
-                unset($e);
-            }
-        }
-        $stmt->closeCursor();
-
-        $this->app->getAclForUser($user)->give_access_to_base($base_ids);
-        foreach ($base_ids as $base_id) {
-            $this->app->getAclForUser($user)->update_rights_to_base($base_id, [
-                'canpush'         => 1, 'cancmd'          => 1
-                , 'canputinalbum'   => 1, 'candwnldhd'      => 1, 'candwnldpreview' => 1, 'canadmin'        => 1
-                , 'actif'           => 1, 'canreport'       => 1, 'canaddrecord'    => 1, 'canmodifrecord'  => 1
-                , 'candeleterecord' => 1, 'chgstatus'       => 1, 'imgtools'        => 1, 'manage'          => 1
-                , 'modify_struct'   => 1, 'nowatermark'     => 1
-                ]
-            );
-        }
+        $service->addDataboxAdmin($this, $user);
 
         return $this;
     }
@@ -908,22 +818,16 @@ class databox extends base implements ThumbnailedElement
         return $this;
     }
 
+    /**
+     * @return $this
+     * @deprecated User DataboxService::reindexDatabox instead
+     */
     public function reindex()
     {
-        $this->get_connection()->update('pref', ['updated_on' => '0000-00-00 00:00:00'], ['prop' => 'indexes']);
+        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
+        $service = $this->app['databoxes.service'];
 
-        // Set TO_INDEX flag on all records
-        $sql = "UPDATE record SET jeton = (jeton | :token)";
-        $stmt = $this->connection->prepare($sql);
-        $stmt->bindValue(':token', PhraseaTokens::TO_INDEX, PDO::PARAM_INT);
-        $stmt->execute();
-
-        $this->app['dispatcher']->dispatch(
-            DataboxEvents::REINDEX_ASKED,
-            new ReindexAskedEvent(
-                $this
-            )
-        );
+        $service->reindexDatabox($this);
 
         return $this;
     }

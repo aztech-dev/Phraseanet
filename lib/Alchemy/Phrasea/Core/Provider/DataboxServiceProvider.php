@@ -7,8 +7,11 @@ use Alchemy\Phrasea\Databox\CachingDataboxRepository;
 use Alchemy\Phrasea\Databox\DataboxFactory;
 use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Databox\DbalDataboxRepository;
+use Alchemy\Phrasea\Databox\Process\AddAdmin;
 use Alchemy\Phrasea\Databox\Process\Create;
+use Alchemy\Phrasea\Databox\Process\Delete;
 use Alchemy\Phrasea\Databox\Process\DataboxProcessRegistry;
+use Alchemy\Phrasea\Databox\Process\Reindex\ReindexStep;
 use Alchemy\Phrasea\Databox\Process\StepRegistry;
 use Alchemy\Phrasea\Databox\Process\Mount;
 use Alchemy\Phrasea\Databox\Process\Unmount;
@@ -55,9 +58,12 @@ class DataboxServiceProvider implements ServiceProviderInterface
         $app['databoxes.service'] = $app->share(function (PhraseaApplication $app) {
             $processRegistry = new DataboxProcessRegistry();
 
-            $processRegistry->registerProcess(Create\CreateStep::class, $this->buildCreateStepRegisty($app));
+            $processRegistry->registerProcess(Create\CreateStep::class, $this->buildCreateStepRegistry($app));
             $processRegistry->registerProcess(Mount\MountStep::class, $this->buildMountStepRegistry($app));
             $processRegistry->registerProcess(Unmount\UnmountStep::class, $this->buildUnmountStepRegistry($app));
+            $processRegistry->registerProcess(Delete\DeleteStep::class, $this->buildDeleteStepRegistry($app));
+            $processRegistry->registerProcess(AddAdmin\AddAdminStep::class, $this->buildAddAdminStepRegistry($app));
+            $processRegistry->registerProcess(ReindexStep::class, $this->buildReindexStepRegistry($app));
 
             return new DataboxService(
                 $app['repo.databoxes'],
@@ -68,7 +74,7 @@ class DataboxServiceProvider implements ServiceProviderInterface
         });
     }
 
-    private function buildCreateStepRegisty(PhraseaApplication $app)
+    private function buildCreateStepRegistry(PhraseaApplication $app)
     {
         $registry = new StepRegistry();
 
@@ -137,6 +143,43 @@ class DataboxServiceProvider implements ServiceProviderInterface
 
         $registry->addStepFactory(function () use ($app) {
             return new Unmount\DeleteDataboxReferencesStep($app->getApplicationBox(), $app['conf']);
+        });
+
+        return $registry;
+    }
+
+    private function buildDeleteStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () use ($app) {
+            return new Delete\DeleteStep($app->getApplicationBox());
+        });
+
+        return $registry;
+    }
+
+    private function buildAddAdminStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () use ($app) {
+            return new AddAdmin\GrantDataboxAdminRights($app->getAclProvider());
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new AddAdmin\GrantCollectionAdminRights($app->getApplicationBox(), $app->getAclProvider());
+        });
+
+        return $registry;
+    }
+
+    private function buildReindexStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function() {
+            return new ReindexStep();
         });
 
         return $registry;
