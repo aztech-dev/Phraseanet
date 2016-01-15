@@ -5,6 +5,15 @@ namespace Alchemy\Phrasea\Databox\Structure;
 class Structure 
 {
 
+    public static function createFromDomDocument(\DOMDocument $structureDocument)
+    {
+        $structureDocument
+            ->documentElement
+            ->setAttribute("modification_date", $now = date("YmdHis"));
+
+        return new self($structureDocument->saveXML());
+    }
+
     /**
      * @var string
      */
@@ -92,5 +101,12 @@ class Structure
         }
 
         return $this->domXpath;
+    }
+
+    public function getModificationDate()
+    {
+        return $this->getDomDocument()
+            ->documentElement
+            ->getAttribute("modification_date");
     }
 }

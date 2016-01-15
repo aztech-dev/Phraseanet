@@ -21,13 +21,18 @@ class DataboxProcessRegistry
         $this->registries[$stepClass] = $registry;
     }
 
-    public function getProcessSteps($stepClassName)
+    public function getStepRegistry($stepClassName)
     {
         if (! isset($this->registries[$stepClassName])) {
-            throw new InvalidArgumentException("No process for step class '$stepClassName'");
+            throw new InvalidArgumentException("No registry for step class '$stepClassName'");
         }
 
-        return $this->registries[$stepClassName]->getSteps();
+        return $this->registries[$stepClassName];
+    }
+
+    public function getProcessSteps($stepClassName)
+    {
+        return $this->getStepRegistry($stepClassName)->getSteps();
     }
 
     /**

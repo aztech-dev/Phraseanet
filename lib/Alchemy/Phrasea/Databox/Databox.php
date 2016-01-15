@@ -159,10 +159,15 @@ class Databox
     }
 
     /**
+     * @param bool $fallbackToDatabaseName
      * @return string
      */
-    public function getViewName()
+    public function getViewName($fallbackToDatabaseName = true)
     {
+        if (! $this->viewName && $fallbackToDatabaseName) {
+            return $this->getDatabase();
+        }
+
         return $this->viewName;
     }
 
@@ -193,6 +198,25 @@ class Databox
         }
 
         throw new InvalidArgumentException(sprintf('Code %s is not defined', $languageCode));
+    }
+
+    /**
+     * @param string $languageCode
+     * @param string $defaultValue
+     * @return string
+     */
+    public function getLabelOrDefault($languageCode, $defaultValue)
+    {
+        if (! array_key_exists($languageCode, $this->labels)) {
+            return $defaultValue;
+        }
+
+        return $this->getLabel($languageCode);
+    }
+
+    public function getLabelOrViewname($languageCode)
+    {
+        return $this->getLabelOrDefault($languageCode, $this->getViewName(true));
     }
 
     /**

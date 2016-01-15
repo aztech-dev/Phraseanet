@@ -3,21 +3,21 @@
 namespace Alchemy\Phrasea\Databox;
 
 use Alchemy\Phrasea\Application;
-use Alchemy\Phrasea\Core\Configuration\PropertyAccess;
-use Alchemy\Phrasea\Core\Event\Databox\CreatedEvent;
+use Alchemy\Phrasea\Core\Event\Databox as DataboxEvent;
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
-use Alchemy\Phrasea\Core\Event\Databox\MountedEvent;
-use Alchemy\Phrasea\Core\Event\Databox\UnmountedEvent;
 use Alchemy\Phrasea\Databox\Field\DublinCoreFieldProvider;
+use Alchemy\Phrasea\Databox\Process\AddAdmin\AddAdminStep;
 use Alchemy\Phrasea\Databox\Process\Create\AbstractCreateStep;
 use Alchemy\Phrasea\Databox\Process\Create\CreateStep;
 use Alchemy\Phrasea\Databox\Process\DataboxProcessRegistry;
+use Alchemy\Phrasea\Databox\Process\Delete\DeleteStep;
 use Alchemy\Phrasea\Databox\Process\Mount\AbstractMountStep;
 use Alchemy\Phrasea\Databox\Process\Mount\MountStep;
-use Alchemy\Phrasea\Databox\Process\StepRegistry;
+use Alchemy\Phrasea\Databox\Process\Reindex\ReindexStep;
+use Alchemy\Phrasea\Databox\Process\ReplaceStructure\ReplaceStructureStep;
 use Alchemy\Phrasea\Databox\Process\Unmount\UnmountStep;
 use Alchemy\Phrasea\Exception\RuntimeException;
-use Assert\Assertion;
+use Alchemy\Phrasea\Model\Entities\User;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -85,7 +85,7 @@ class DataboxService
             throw new RuntimeException('Databox create process did not return a databox.');
         }
 
-        $this->eventDispatcher->dispatch(DataboxEvents::CREATED, new CreatedEvent($databox));
+        $this->eventDispatcher->dispatch(DataboxEvents::CREATED, new DataboxEvent\CreatedEvent($databox));
 
         return $databox;
     }
@@ -109,8 +109,7 @@ class DataboxService
             throw new RuntimeException('Databox mount process did not return a databox.');
         }
 
-
-        $this->eventDispatcher->dispatch(DataboxEvents::MOUNTED, new MountedEvent($databox));
+        $this->eventDispatcher->dispatch(DataboxEvents::MOUNTED, new DataboxEvent\MountedEvent($databox));
 
         return $databox;
     }
@@ -130,7 +129,84 @@ class DataboxService
 
         $this->eventDispatcher->dispatch(
             DataboxEvents::UNMOUNTED,
-            new UnmountedEvent(null, [ 'dbname' => $databaseName ])
+            new DataboxEvent\UnmountedEvent(null, [ 'dbname' => $databaseName ])
+        );
+    }
+
+    /**
+     * @param \databox $databox
+     */
+    public function deleteDatabox(\databox $databox)
+    {
+        $databoxVO = $databox->getDataObject();
+        $databaseName = $databoxVO->getDatabase();
+
+        foreach ($this->processRegistry->getProcessSteps(DeleteStep::class) as $step) {
+            /** @var DeleteStep $step */
+            $step->execute($databox);
+        }
+
+        $this->eventDispatcher->dispatch(
+            DataboxEvents::DELETED,
+            new DataboxEvent\DeletedEvent(null, [ 'dbname'=> $databaseName ])
+        );
+    }
+
+    /**
+     * @param \databox $databox
+     * @param User $adminUser
+     */
+    public function addDataboxAdmin(\databox $databox, User $adminUser)
+    {
+        $databoxConnection = $databox->get_connection();
+        $databoxVO = $databox->getDataObject();
+
+        foreach ($this->processRegistry->getProcessSteps(AddAdminStep::class) as $step) {
+            /** @var AddAdminStep $step */
+            $step->execute($databoxConnection, $databoxVO, $adminUser);
+        }
+
+        // @todo Dispatch event
+    }
+
+    /**
+     * @param \databox $databox
+     */
+    public function reindexDatabox(\databox $databox)
+    {
+        $databoxConnection = $databox->get_connection();
+        $databoxVO = $databox->getDataObject();
+
+        foreach ($this->processRegistry->getProcessSteps(ReindexStep::class) as $step) {
+            /** @var ReindexStep $step */
+            $step->execute($databoxConnection, $databoxVO);
+        }
+
+        $this->eventDispatcher->dispatch(DataboxEvents::REINDEX_ASKED, new DataboxEvent\ReindexAskedEvent($databox));
+    }
+
+    /**
+     * @param \databox $databox
+     * @param \DOMDocument $structureDom
+     */
+    public function replaceDataboxStructure(\databox $databox, \DOMDocument $structureDom)
+    {
+        $previousStructure = $databox->getStructure();;
+        $databoxConnection = $databox->get_connection();
+        $databoxVO = $databox->getDataObject();
+
+        foreach ($this->processRegistry->getProcessSteps(ReplaceStructureStep::class) as $step) {
+            /** @var ReplaceStructureStep $step */
+            $step->execute($databoxConnection, $databoxVO, $structureDom);
+        }
+
+        $databox->delete_data_from_cache(\databox::CACHE_STRUCTURE);
+
+        $this->eventDispatcher->dispatch(
+            DataboxEvents::STRUCTURE_CHANGED,
+            new DataboxEvent\StructureChangedEvent($databox, [
+                'dom_before' => $previousStructure->getRawStructure()
+            ])
         );
     }
 
