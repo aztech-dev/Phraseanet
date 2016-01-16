@@ -22,7 +22,10 @@ use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Delegate\ScheduledFetche
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Fetcher;
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\CoreHydrator;
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\FlagHydrator;
+use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\HydratorQueryProvider;
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\MetadataHydrator;
+use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\Query\MySqlQueryProvider;
+use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\Query\QueryProviderFactory;
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\SubDefinitionHydrator;
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\ThesaurusHydrator;
 use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\TitleHydrator;
@@ -42,10 +45,19 @@ class RecordIndexer
 {
     const TYPE_NAME = 'record';
 
+    /**
+     * @var Structure
+     */
     private $structure;
 
+    /**
+     * @var RecordHelper
+     */
     private $helper;
 
+    /**
+     * @var Thesaurus
+     */
     private $thesaurus;
 
     /**
@@ -58,6 +70,9 @@ class RecordIndexer
      */
     private $locales;
 
+    /**
+     * @var LoggerInterface
+     */
     private $logger;
 
     private function getUniqueOperationId($record_key)
@@ -92,11 +107,14 @@ class RecordIndexer
             $submited_records,        // this is OUR records list
             $operation_identifiers          // reduce to the records indexed by this bulk (should be the same...)
         );
+
         if(count($records) === 0) {
             return;
         }
+
         // Commit and remove "indexing" flag
         RecordQueuer::didFinishIndexingRecords(array_values($records), $databox);
+
         foreach (array_keys($records) as $id) {
             unset($submited_records[$id]);
         }
@@ -240,14 +258,17 @@ class RecordIndexer
     {
         $connection = $databox->get_connection();
         $candidateTerms = new CandidateTerms($databox);
+        $queryProvider = QueryProviderFactory::getQueryProvider($connection);
+
         $fetcher = new Fetcher($databox, array(
             new CoreHydrator($databox->get_sbas_id(), $databox->get_viewname(), $this->helper),
-            new TitleHydrator($connection),
-            new MetadataHydrator($connection, $this->structure, $this->helper),
+            new TitleHydrator($connection, $queryProvider),
+            new MetadataHydrator($connection, $this->structure, $this->helper, $queryProvider),
             new FlagHydrator($this->structure, $databox),
             new ThesaurusHydrator($this->structure, $this->thesaurus, $candidateTerms),
-            new SubDefinitionHydrator($connection)
+            new SubDefinitionHydrator($connection, $queryProvider)
         ), $delegate);
+
         $fetcher->setBatchSize(200);
         $fetcher->onDrain(function() use ($candidateTerms) {
             $candidateTerms->save();

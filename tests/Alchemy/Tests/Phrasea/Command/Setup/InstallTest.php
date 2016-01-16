@@ -41,6 +41,8 @@ class InstallTest extends \PhraseanetTestCase
             ->method('getOption')
             ->will($this->returnCallback(function ($option) use ($infoDb, $template, $email, $password, $serverName, $dataPath) {
                 switch ($option) {
+                    case 'env':
+                        return 'mock';
                     case 'appbox':
                         return $infoDb['database']['ab_name'];
                         break;

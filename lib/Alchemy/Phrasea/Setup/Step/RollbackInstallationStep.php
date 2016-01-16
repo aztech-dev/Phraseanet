@@ -59,7 +59,7 @@ class RollbackInstallationStep implements Step
      * @param Connection $databoxConnection
      * @param $structure
      */
-    private function dropDataboxTables(Connection $databoxConnection, $structure)
+    private function dropDataboxTables(Connection $databoxConnection = null, $structure)
     {
         if ($databoxConnection === null) {
             return;

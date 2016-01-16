@@ -114,12 +114,12 @@ class DataboxServiceProvider implements ServiceProviderInterface
            return new Create\CreateDatabaseForDataboxStep();
         });
 
-        $registry->addStepFactory(function () {
-            return new Create\SetCurrentDatabaseStep();
-        });
-
         $registry->addStepFactory(function () use ($app) {
             return new Create\PopulateDataboxStep($app['conf']);
+        });
+
+        $registry->addStepFactory(function () {
+            return new Create\SetCurrentDatabaseStep();
         });
 
         $registry->addStepFactory(function () use ($app) {
@@ -177,7 +177,7 @@ class DataboxServiceProvider implements ServiceProviderInterface
         $registry = new StepRegistry();
 
         $registry->addStepFactory(function () use ($app) {
-            return new Delete\DeleteStep($app->getApplicationBox());
+            return new Delete\DeleteStep($app->getApplicationBox(), $app['repo.databoxes']);
         });
 
         return $registry;

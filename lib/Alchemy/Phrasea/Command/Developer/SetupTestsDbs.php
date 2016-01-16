@@ -12,14 +12,13 @@
 namespace Alchemy\Phrasea\Command\Developer;
 
 use Alchemy\Phrasea\Command\Command;
+use Alchemy\Phrasea\Core\Configuration\PropertyAccess;
 use Alchemy\Phrasea\Exception\RuntimeException;
 use Doctrine\DBAL\Connection;
-use Symfony\Component\Console\Input\ArrayInput;
+use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Yaml\Yaml;
-use Symfony\Component\Process\Process;
 
 class SetupTestsDbs extends Command
 {
@@ -38,30 +37,17 @@ class SetupTestsDbs extends Command
             ));
         }
 
-        $settings = Yaml::parse(file_get_contents(__DIR__ . '/../../../../../resources/hudson/InstallDBs.yml'));
-
-        $dbs = array();
-
-        $dbs[] = $settings['database']['ab_name'];
-        $dbs[] = $settings['database']['db_name'];
-
-        $schema = $this->container['orm.em']->getConnection()->getSchemaManager();
-
-        foreach($dbs as $name) {
-            $output->writeln('Creating database "'.$name.'"...<info>OK</info>');
-            $schema->dropAndCreateDatabase($name);
-        }
-
         /** @var Connection $connection */
         $connection = $this->container['orm.em']->getConnection();
+        /** @var AbstractSchemaManager $schema */
+        $schema = $connection->getSchemaManager();
+
+        $output->writeln('Creating database "'.$connection->getDatabase().'"...<info>OK</info>');
+        $schema->createDatabase($connection->getDatabase());
 
         if ($connection->getDriver()->getName() == 'pdo_mysql') {
             $connection->executeUpdate('
-                GRANT ALL PRIVILEGES ON ' . $settings['database']['ab_name'] . '.* TO \'' . $settings['database']['user'] . '\'@\'' . $settings['database']['host'] . '\' IDENTIFIED BY \'' . $settings['database']['password'] . '\' WITH GRANT OPTION
-            ');
-
-            $connection->executeUpdate('
-                GRANT ALL PRIVILEGES ON ' . $settings['database']['db_name'] . '.* TO \'' . $settings['database']['user'] . '\'@\'' . $settings['database']['host'] . '\' IDENTIFIED BY \'' . $settings['database']['password'] . '\' WITH GRANT OPTION
+                GRANT ALL PRIVILEGES ON ' . $connection->getDatabase() . '.* TO \'' . $connection->getUsername() . '\'@\'' . $connection->getHost() . '\' IDENTIFIED BY \'' . $connection->getPassword() . '\' WITH GRANT OPTION
             ');
 
             $connection->executeUpdate('SET @@global.sql_mode= ""');

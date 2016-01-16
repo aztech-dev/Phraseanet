@@ -14,20 +14,24 @@ namespace Alchemy\Phrasea\Core\Provider;
 use Alchemy\Phrasea\Application as PhraseaApplication;
 use Alchemy\Phrasea\Cache\Manager;
 use Alchemy\Phrasea\Core\Connection\ConnectionPoolManager;
+use Alchemy\Phrasea\Core\Profiler\ProfilingSqlLogger;
+use Alchemy\Phrasea\Core\Profiler\SqlProfiler;
 use Alchemy\Phrasea\Exception\InvalidArgumentException;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\CachedReader;
+use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Logging\EchoSQLLogger;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
 use Doctrine\ORM\Tools\Setup;
 use Gedmo\DoctrineExtensions;
 use Gedmo\Timestampable\TimestampableListener;
+use RandomLib\Factory;
 use Silex\Application;
 use Silex\ServiceProviderInterface;
 
@@ -49,16 +53,26 @@ class ORMServiceProvider implements ServiceProviderInterface
             throw new \LogicException('Application must be an instance of Alchemy\Phrasea\Application');
         }
 
-        $app['orm.em'] = $app->share(function (PhraseaApplication $app) {
-            $connectionParameters = $this->buildConnectionParameters($app);
-            $configuration = $this->buildConfiguration($app);
-            /** @var Connection $connection */
-            $connection = $app['dbal.provider']($connectionParameters);
+        $app['dbal.profiler'] = $app->share(function (PhraseaApplication $app) {
+            $factory = new Factory();
 
-            $this->registerCustomTypes();
-            $this->registerEventListeners($connection->getEventManager());
+            try {
+                $cache = $app['cache'];
+            }
+            catch (\Exception $ex) {
+                $cache = new ArrayCache();
+            }
 
-            return EntityManager::create($connection, $configuration, $connection->getEventManager());
+            return new SqlProfiler(
+                $factory->getMediumStrengthGenerator(),
+                $cache,
+                'sql_profiler',
+                $factory->getMediumStrengthGenerator()->generateString(32)
+            );
+        });
+
+        $app['dbal.logger'] = $app->share(function (PhraseaApplication $app) {
+            return new ProfilingSqlLogger($app['dbal.profiler']);
         });
 
         $app['dbal.connection_pool'] = $app->share(function () {
@@ -68,8 +82,26 @@ class ORMServiceProvider implements ServiceProviderInterface
         $app['dbal.provider'] = $app->protect(function (array $parameters) use ($app) {
             /** @var ConnectionPoolManager $connectionPool */
             $connectionPool = $app['dbal.connection_pool'];
+            /** @var Connection $connection */
+            $connection = $connectionPool->get($parameters);
 
-            return $connectionPool->get($parameters);
+            if (! $connection->getConfiguration()->getSQLLogger()) {
+                $connection->getConfiguration()->setSQLLogger($app['dbal.logger']);
+            }
+
+            return $connection;
+        });
+
+        $app['orm.em'] = $app->share(function (PhraseaApplication $app) {
+            $connectionParameters = $this->buildConnectionParameters($app);
+            $configuration = $this->buildConfiguration($app, $app['dbal.logger']);
+            /** @var Connection $connection */
+            $connection = $app['dbal.provider']($connectionParameters);
+
+            $this->registerCustomTypes();
+            $this->registerEventListeners($connection->getEventManager());
+
+            return EntityManager::create($connection, $configuration, $connection->getEventManager());
         });
     }
 
@@ -91,7 +123,12 @@ class ORMServiceProvider implements ServiceProviderInterface
 
     private function buildConnectionParameters(PhraseaApplication $app)
     {
-        return $app['conf']->get(['main', 'database'], array());
+        try {
+            return $app['conf']->get(['main', 'database'], array());
+        }
+        catch (\Exception $exception) {
+            return [];
+        }
     }
 
     /**
@@ -108,10 +145,12 @@ class ORMServiceProvider implements ServiceProviderInterface
         $driver = $this->buildMetadataDriver($app, $cache, $doctrineAnnotationsPath);
 
         $configuration = Setup::createConfiguration($devMode, $proxiesDirectory, $cache);
+
         $configuration->setMetadataDriverImpl($driver);
         $configuration->addEntityNamespace('Phraseanet', 'Alchemy\Phrasea\Model\Entities');
         $configuration->setAutoGenerateProxyClasses($devMode);
         $configuration->setProxyNamespace('Alchemy\Phrasea\Model\Proxies');
+        $configuration->setSQLLogger(new EchoSQLLogger());
 
         return $configuration;
     }
@@ -138,6 +177,7 @@ class ORMServiceProvider implements ServiceProviderInterface
 
     /**
      * @param PhraseaApplication $app
+     * @param Cache $cache
      * @param $doctrineAnnotationsPath
      * @return AnnotationDriver
      */
@@ -161,16 +201,26 @@ class ORMServiceProvider implements ServiceProviderInterface
 
     private function getCacheDriver(PhraseaApplication $app)
     {
-        $conf = $app['conf']->get(['main', 'cache']);
+        try {
+            $conf = $app['conf']->get(['main', 'db-cache'], $app['conf']->get(['main', 'cache']));
 
-        return isset($conf['type']) ? $conf['type'] : 'ArrayCache';
+            return isset($conf['type']) ? $conf['type'] : 'ArrayCache';
+        }
+        catch (\Exception $exception) {
+            return 'ArrayCache';
+        }
     }
 
     private function getCacheOptions(PhraseaApplication $app)
     {
-        $conf = $app['conf']->get(['main', 'cache']);
+        try {
+            $conf = $app['conf']->get(['main', 'db-cache'], $app['conf']->get(['main', 'cache']));
 
-        return isset($conf['options']) ? $conf['options'] : [];
+            return isset($conf['options']) ? $conf['options'] : [];
+        }
+        catch (\Exception $exception) {
+            return [];
+        }
     }
 
     private function validateConnectionSettings(array $parameters)

@@ -1656,24 +1656,27 @@ class ACL implements cache_cacheableInterface
 
         foreach ($datas as $name => $f) {
             $vhex[$name] = "0x";
+
             while (strlen($datas[$name]) < 32) {
                 $datas[$name] = "0" . $datas[$name];
             }
         }
+
         foreach ($datas as $name => $f) {
             while (strlen($datas[$name]) > 0) {
                 $valtmp = substr($datas[$name], 0, 4);
                 $datas[$name] = substr($datas[$name], 4);
-                $vhex[$name] .= dechex(bindec($valtmp));
+                $vhex[$name] .= bindec($valtmp);
             }
         }
 
         $sql = "UPDATE basusr
-        SET mask_and=((mask_and & " . $vhex['and_and'] . ") | " . $vhex['and_or'] . ")
-          ,mask_xor=((mask_xor & " . $vhex['xor_and'] . ") | " . $vhex['xor_or'] . ")
+        SET mask_and=((mask_and & " . hexdec($vhex['and_and']) . ") | " . hexdec($vhex['and_or']) . ")
+          ,mask_xor=((mask_xor & " . hexdec($vhex['xor_and']) . ") | " . hexdec($vhex['xor_or']) . ")
         WHERE usr_id = :usr_id and base_id = :base_id";
 
         $stmt = $this->app->getApplicationBox()->get_connection()->prepare($sql);
+
         $stmt->execute([':base_id' => $base_id, ':usr_id'  => $this->user->getId()]);
         $stmt->closeCursor();
 

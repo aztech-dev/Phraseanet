@@ -43,7 +43,7 @@ class CollectionFactory
         $collection->setPreferences($row['prefs']);
         $collection->setPublicWatermark($row['pub_wm']);
 
-        return new \collection($this->app, $collection, $reference, $row);
+        return new \collection($this->app, $collection, $reference);
     }
 
     /**

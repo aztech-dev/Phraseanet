@@ -2,6 +2,8 @@
 
 namespace Alchemy\Phrasea\Databox\Process\Delete;
 
+use Alchemy\Phrasea\Databox\DataboxRepository;
+
 class DeleteStep
 {
     /**
@@ -9,9 +11,15 @@ class DeleteStep
      */
     private $applicationBox;
 
-    public function __construct(\appbox $appbox)
+    /**
+     * @var DataboxRepository
+     */
+    private $databoxRepository;
+
+    public function __construct(\appbox $appbox, DataboxRepository $repository)
     {
         $this->applicationBox = $appbox;
+        $this->databoxRepository = $repository;
     }
 
     /**
@@ -22,10 +30,8 @@ class DeleteStep
     {
         $databoxVo = $databox->getDataObject();
 
-        $sql = 'DROP DATABASE `' . $databoxVo->getDatabase() . '`';
-        $stmt = $databox->get_connection()->prepare($sql);
-        $stmt->execute();
-        $stmt->closeCursor();
+        $this->databoxRepository->unmount($databoxVo);
+        $this->databoxRepository->dropDatabase($databox->get_connection());
 
         $this->applicationBox->delete_data_from_cache(\appbox::CACHE_LIST_BASES);
     }

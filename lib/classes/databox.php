@@ -272,7 +272,7 @@ class databox extends base implements ThumbnailedElement
                 ->set_aggregable((isset($field['aggregable']) ? (string) $field['aggregable'] : 0))
                 ->set_type($type)
                 ->set_tbranch(isset($field['tbranch']) ? (string) $field['tbranch'] : '')
-                ->set_thumbtitle(isset($field['thumbtitle']) ? (string) $field['thumbtitle'] : (isset($field['thumbTitle']) ? $field['thumbTitle'] : '0'))
+                ->set_thumbtitle(isset($field['thumbtitle']) ? (string) $field['thumbtitle'] : (isset($field['thumbTitle']) ? (string) $field['thumbTitle'] : '0'))
                 ->set_report(isset($field['report']) ? (string) $field['report'] : '1')
                 ->save();
 

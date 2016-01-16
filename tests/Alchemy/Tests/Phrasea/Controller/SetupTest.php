@@ -2,6 +2,10 @@
 
 namespace Alchemy\Tests\Phrasea\Controller;
 
+use Alchemy\Phrasea\Core\Configuration\Compiler;
+use Alchemy\Phrasea\Core\Configuration\Configuration;
+use Alchemy\Phrasea\Core\Configuration\HostConfiguration;
+use Alchemy\Phrasea\Core\Configuration\PropertyAccess;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -15,11 +19,19 @@ class SetupTest extends \PhraseanetWebTestCase
     {
         parent::setUp();
 
+        $this->app['phraseanet.configuration.config-path'] = [
+            $this->app['root.path'] . '/config/configuration.test.yml',
+            $this->app['root.path'] . '/config/configuration.mock.yml'
+        ];
+
         $this->app = $this->loadApp('lib/Alchemy/Phrasea/Application/Root.php');
 
         $this->app['phraseanet.configuration-tester'] = $this->getMockBuilder('Alchemy\Phrasea\Setup\ConfigurationTester')
             ->disableOriginalConstructor()
             ->getMock();
+
+        $this->app['phraseanet.configuration.config-compiled-path'] =
+            $this->app['root.path'] . '/config/configuration-compiled.mock.php';
     }
 
     public function testRouteSlash()
@@ -152,9 +164,9 @@ class SetupTest extends \PhraseanetWebTestCase
             'binary_convert'    => '/path/to/convert',
             'binary_php'        => '/path/to/php',
             'datapath_noweb'    => sys_get_temp_dir() . '/datainstall/noweb',
-            'hostname'       => $host,
-            'port'           => $port,
-            'user'           => $user,
+            'hostname'          => $host,
+            'port'              => $port,
+            'user'              => $user,
             'db_password'       => $password,
             'ab_name'           => $abName,
             'db_name'           => $dbName,
@@ -270,7 +282,7 @@ class SetupTest extends \PhraseanetWebTestCase
             "port"     => $connexion['port'],
             "user"     => $connexion['user'],
             "password" => $connexion['password'],
-            "db_name"  => "fake-DTABASE-name"
+            "db_name"  => "fake-DATABASE-name"
         );
 
         $client = $this->createClient();

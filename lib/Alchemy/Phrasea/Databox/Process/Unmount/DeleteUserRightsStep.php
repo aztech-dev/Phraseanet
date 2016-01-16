@@ -20,6 +20,7 @@ class DeleteUserRightsStep implements UnmountStep
     public function __construct(Application $application, ACLProvider $aclProvider)
     {
         $this->aclProvider = $aclProvider;
+        $this->application = $application;
     }
 
     public function execute(\databox $databox)

@@ -21,15 +21,7 @@ shift
 VERBOSITY=$@
 
 set -x
-mysql -uroot -ptoor -e '
-SET @@global.sql_mode= STRICT_ALL_TABLES;
-SET @@global.max_allowed_packet= 33554432;
-SET @@global.wait_timeout= 999999;
-DROP SCHEMA IF EXISTS ab_test;
-DROP SCHEMA IF EXISTS db_test;
-CREATE SCHEMA IF NOT EXISTS ab_test;
-CREATE SCHEMA IF NOT EXISTS db_test;
-'
+
 if ! ./bin/developer system:uninstall --env=test > /dev/null 2>&1
 then
     rm -f config/configuration.test.yml config/configuration-compiled.test.php
@@ -42,8 +34,8 @@ WORKDIR=`pwd`;
     --env=test \
     --email=test@phraseanet.com \
     --password=test \
-    --db-dsn="sqlite:path=/tmp/phraseanet.test.databox.sqlite;dbname=databox;user=root" \
-    --ab-dsn="sqlite:path=/tmp/phraseanet.test.appbox.sqlite;dbname=appbox;user=root" \
+    --db-dsn="sqlite:path=/tmp/phraseanet.test.databox.sqlite;dbname=/tmp/phraseanet.test.databox.sqlite;user=root" \
+    --ab-dsn="sqlite:path=/tmp/phraseanet.test.appbox.sqlite;dbname=/tmp/phraseanet.test.appbox.sqlite;user=root" \
     --db-template=en \
     --server-name=http://127.0.0.1 -y $VERBOSITY
 case "$INSTALL_MODE" in

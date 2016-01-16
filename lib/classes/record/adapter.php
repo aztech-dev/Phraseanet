@@ -1188,7 +1188,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         $connection = $collection->get_databox()->get_connection();
 
         $sql = 'INSERT INTO record (coll_id, record_id, parent_record_id, moddate, credate, type, sha256, uuid, originalname, mime)'
-            .' VALUES (:coll_id, NULL, :parent_record_id, NOW(), NOW(), :type, :sha256, :uuid , :originalname, :mime)';
+            .' VALUES (:coll_id, NULL, :parent_record_id, :now, :now, :type, :sha256, :uuid , :originalname, :mime)';
 
         $stmt = $connection->prepare($sql);
 
@@ -1200,6 +1200,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
             ':uuid'             => Uuid::uuid4(),
             ':originalname'     => null,
             ':mime'             => null,
+            ':now'              => (new \DateTime())->format('Y-m-d H:i:s')
         ]);
         $stmt->closeCursor();
 
@@ -1241,7 +1242,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
 
         $sql = "INSERT INTO record"
             . " (coll_id, record_id, parent_record_id, moddate, credate, type, sha256, uuid, originalname, mime)"
-            . " VALUES (:coll_id, null, :parent_record_id, NOW(), NOW(), :type, :sha256, :uuid, :originalname, :mime)";
+            . " VALUES (:coll_id, null, :parent_record_id, :now, :now, :type, :sha256, :uuid, :originalname, :mime)";
 
         $stmt = $databox->get_connection()->prepare($sql);
 
@@ -1253,6 +1254,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
             ':uuid'             => $file->getUUID(true),
             ':originalname'     => $file->getOriginalName(),
             ':mime'             => $file->getFile()->getMimeType(),
+            ':now'               => (new \DateTime())->format('Y-m-d H:i:s')
         ]);
         $stmt->closeCursor();
 
