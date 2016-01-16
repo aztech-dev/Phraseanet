@@ -17,39 +17,46 @@ use Alchemy\Phrasea\SearchEngine\Elastic\RecordHelper;
 use Alchemy\Phrasea\SearchEngine\Elastic\Structure\Structure;
 use Alchemy\Phrasea\Utilities\StringHelper;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\Connection as DriverConnection;
-use DomainException;
-use InvalidArgumentException;
 
 class MetadataHydrator implements HydratorInterface
 {
+    /**
+     * @var Connection
+     */
     private $connection;
+
+    /**
+     * @var Structure
+     */
     private $structure;
+
+    /**
+     * @var RecordHelper
+     */
     private $helper;
+
+    /**
+     * @var HydratorQueryProvider
+     */
+    private $queryProvider;
 
     private $gps_position_buffer = [];
 
-    public function __construct(DriverConnection $connection, Structure $structure, RecordHelper $helper)
-    {
+    public function __construct(
+        Connection $connection,
+        Structure $structure,
+        RecordHelper $helper,
+        HydratorQueryProvider $queryProvider
+    ) {
         $this->connection = $connection;
         $this->structure = $structure;
         $this->helper = $helper;
+        $this->queryProvider = $queryProvider;
     }
 
     public function hydrateRecords(array &$records)
     {
-        $sql = <<<SQL
-            (SELECT record_id, ms.name AS `key`, m.value AS value, 'caption' AS type, ms.business AS private
-            FROM metadatas AS m
-            INNER JOIN metadatas_structure AS ms ON (ms.id = m.meta_struct_id)
-            WHERE record_id IN (?))
-
-            UNION
-
-            (SELECT record_id, t.name AS `key`, t.value AS value, 'exif' AS type, 0 AS private
-            FROM technical_datas AS t
-            WHERE record_id IN (?))
-SQL;
+        $sql = $this->queryProvider->getMetadataQuery();
 
         $ids = array_keys($records);
         $statement = $this->connection->executeQuery(

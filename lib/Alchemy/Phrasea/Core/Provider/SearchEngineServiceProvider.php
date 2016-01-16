@@ -11,8 +11,10 @@
 
 namespace Alchemy\Phrasea\Core\Provider;
 
+use Alchemy\Phrasea\Application as PhraseaApplication;
 use Alchemy\Phrasea\Controller\LazyLocator;
 use Alchemy\Phrasea\SearchEngine\Elastic\ElasticsearchOptions;
+use Alchemy\Phrasea\SearchEngine\Elastic\Indexer\Record\Hydrator\Query\QueryProviderFactory;
 use Alchemy\Phrasea\SearchEngine\Elastic\Search\QueryVisitor;
 use Alchemy\Phrasea\SearchEngine\SearchEngineLogger;
 use Alchemy\Phrasea\Exception\InvalidArgumentException;
@@ -71,7 +73,7 @@ class SearchEngineServiceProvider implements ServiceProviderInterface
             );
         });
 
-        $app['search_engine.structure'] = $app->share(function (\Alchemy\Phrasea\Application $app) {
+        $app['search_engine.structure'] = $app->share(function (PhraseaApplication $app) {
             $databoxes = $app->getDataboxes();
             return GlobalStructure::createFromDataboxes($databoxes);
         });
@@ -97,11 +99,12 @@ class SearchEngineServiceProvider implements ServiceProviderInterface
             return new TermIndexer($app['phraseanet.appbox'], array_keys($app['locales.available']));
         });
 
-        $app['elasticsearch.indexer.record_indexer'] = $app->share(function ($app) {
-            // TODO Use upcomming monolog factory
+        $app['elasticsearch.indexer.record_indexer'] = $app->share(function (PhraseaApplication $app) {
+            // TODO Use upcoming monolog factory
             $logger = new Logger('indexer');
             $logger->pushHandler(new ErrorLogHandler());
-            return new RecordIndexer(
+
+            $indexer = new RecordIndexer(
                 $app['search_engine.structure'],
                 $app['elasticsearch.record_helper'],
                 $app['thesaurus'],
@@ -109,6 +112,8 @@ class SearchEngineServiceProvider implements ServiceProviderInterface
                 array_keys($app['locales.available']),
                 $logger
             );
+
+            return $indexer;
         });
 
         $app['elasticsearch.record_helper'] = $app->share(function ($app) {

@@ -48,7 +48,6 @@ class SessionManagerSubscriber implements EventSubscriberInterface
 
         if ($this->isFlashUploadRequest($event->getRequest())) {
             if (null !== $sessionId = $event->getRequest()->request->get('php_session_id')) {
-
                 $request = $event->getRequest();
                 $request->cookies->set($this->app['session']->getName(), $sessionId);
 

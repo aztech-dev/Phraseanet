@@ -15,9 +15,21 @@ interface DataboxRepository
 {
     /**
      * @param Connection $connection
+     * @return void
+     */
+    public function dropDatabase(Connection $connection);
+
+    /**
+     * @param Connection $connection
      * @return \databox
      */
     public function mount(Connection $connection);
+
+    /**
+     * @param Databox $databox
+     * @return mixed
+     */
+    public function unmount(Databox $databox);
 
     /**
      * @param int $id

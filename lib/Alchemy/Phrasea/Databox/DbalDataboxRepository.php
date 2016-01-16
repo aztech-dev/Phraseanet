@@ -152,7 +152,7 @@ EOQ;
             ':ord' => $this->getNewDataboxOrdinal(),
             ':host' => '',
             ':port' => '',
-            ':dbname' => '',
+            ':dbname' => $connection->getDatabase(),
             ':user' => $connection->getUsername(),
             ':password' => $connection->getPassword(),
             ':dsn' => $driverName . ':' . implode(';', $connectionParams),
@@ -165,6 +165,24 @@ EOQ;
         return $this->find($databoxId);
     }
 
+    public function unmount(Databox $databox)
+    {
+        if  (! $databox->getDataboxId()) {
+            throw new \InvalidArgumentException('Databox is not mounted');
+        }
+
+        $sql = 'DELETE FROM sbas WHERE sbas_id = :sbas_id';
+
+        $statement = $this->connection->prepare($sql);
+        $statement->execute([
+            'sbas_id' => $databox->getDataboxId()
+        ]);
+    }
+
+    public function dropDatabase(Connection $connection)
+    {
+        $connection->exec('DROP DATABASE `' . $connection->getDatabase() . '`');
+    }
 
     /**
      * @return array

@@ -634,6 +634,7 @@ class media_subdef extends media_abstract implements cache_cacheableInterface
             ':mime'       => $media->getFile()->getMimeType(),
             ':size'       => $media->getFile()->getSize(),
             ':dispatched' => 1,
+            ':now'        => (new \DateTime())->format('Y-m-d H:i:s')
         ];
 
         if (method_exists($media, 'getWidth') && null !== $media->getWidth()) {
@@ -645,11 +646,11 @@ class media_subdef extends media_abstract implements cache_cacheableInterface
 
         $sql = "INSERT INTO subdef"
             . " (record_id, name, path, file, width, height, mime, size, dispatched, created_on, updated_on)"
-            . " VALUES (:record_id, :name, :path, :file, :width, :height, :mime, :size, :dispatched, NOW(), NOW())"
-            . " ON DUPLICATE KEY UPDATE"
+            . " VALUES (:record_id, :name, :path, :file, :width, :height, :mime, :size, :dispatched, :now, :now)";
+            /*. " ON DUPLICATE KEY UPDATE"
             . " path = VALUES(path), file = VALUES(file),"
             . " width = VALUES(width) , height = VALUES(height), mime = VALUES(mime),"
-            . " size = VALUES(size), dispatched = VALUES(dispatched), updated_on = NOW()";
+            . " size = VALUES(size), dispatched = VALUES(dispatched), updated_on = NOW()";*/
 
         $stmt = $connbas->prepare($sql);
         $stmt->execute($params);

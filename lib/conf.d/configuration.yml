@@ -13,8 +13,11 @@ main:
         dbname: ab_phraseanet
         driver: pdo_mysql
         charset: UTF8
+    db-cache:
+        type: MemcachedCache
+        options: {}
     cache:
-        type: ArrayCache
+        type: MemcachedCache
         options: {}
     search-engine:
         type: elasticsearch

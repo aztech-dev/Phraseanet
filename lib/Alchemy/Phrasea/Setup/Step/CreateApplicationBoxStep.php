@@ -9,6 +9,10 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Tools\SchemaTool;
 
+/**
+ * Class CreateApplicationBoxStep
+ * @package Alchemy\Phrasea\Setup\Step
+ */
 class CreateApplicationBoxStep implements Step
 {
     /**
@@ -21,23 +25,41 @@ class CreateApplicationBoxStep implements Step
      */
     private $entityManager;
 
+    /**
+     * @param Application $application
+     * @param EntityManager $entityManager
+     */
     public function __construct(Application $application, EntityManager $entityManager)
     {
         $this->application = $application;
         $this->entityManager = $entityManager;
     }
 
+    /**
+     * @return string
+     */
     public function getName()
     {
         return 'create-appbox';
     }
 
+    /**
+     * @param InitializeEnvironmentCommand $initializeEnvironmentCommand
+     * @param Connection $appboxConnection
+     * @param Connection $databoxConnection
+     * @throws \Doctrine\ORM\Tools\ToolsException
+     */
     public function execute(
         InitializeEnvironmentCommand $initializeEnvironmentCommand,
         Connection $appboxConnection,
         Connection $databoxConnection = null
     ) {
-        $metadata = $this->entityManager->getMetadataFactory()->getAllMetadata();
+        $metadataFactory = $this->entityManager->getMetadataFactory();
+        $metadata = [];
+
+        if ($metadataFactory !== null) {
+            $metadata = $metadataFactory->getAllMetadata();
+        }
 
         if (!empty($metadata)) {
             $tool = new SchemaTool($this->entityManager);
@@ -46,8 +68,6 @@ class CreateApplicationBoxStep implements Step
             $tool->createSchema($metadata);
         }
 
-        $this->application->getApplicationBox()->get_connection()->close();
-        $this->application->getApplicationBox()->get_connection()->connect();
         $this->application->getApplicationBox()->insert_datas();
     }
 }

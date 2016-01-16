@@ -105,4 +105,23 @@ final class CachingDataboxRepository implements DataboxRepository
 
         return $databox;
     }
+
+    /**
+     * @param Databox $databox
+     * @return void
+     */
+    public function unmount(Databox $databox)
+    {
+        $this->repository->unmount($databox);
+        $this->cache->delete($this->cacheKey);
+    }
+
+    /**
+     * @param Connection $connection
+     */
+    public function dropDatabase(Connection $connection)
+    {
+        $this->repository->dropDatabase($connection);
+        $this->cache->delete($this->cacheKey);
+    }
 }

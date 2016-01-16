@@ -43,6 +43,15 @@ class Manager
         $this->factory = $factory;
     }
 
+    public function flushAll()
+    {
+        foreach ($this->caches as $cache) {
+            $cache->flushAll();
+        }
+
+        return true;
+    }
+
     /**
      * @param string $label
      * @param string $name

@@ -56,9 +56,14 @@ class Setup implements ControllerProviderInterface, ServiceProviderInterface
             ->bind('install_do_install');
 
         $controllers->get('/connection_test/mysql/', function (PhraseaApplication $app, Request $request) {
-            $dbHelper = new DatabaseHelper($app, $request);
+            try {
+                $dbHelper = new DatabaseHelper($app, $request);
 
-            return $app->json($dbHelper->checkConnection());
+                return $app->json($dbHelper->checkConnection());
+            }
+            catch (\Exception $ex) {
+                var_dump($ex->getMessage(), $ex->getTraceAsString());
+            }
         });
 
         $controllers->get('/test/path/', function (PhraseaApplication $app, Request $request) {

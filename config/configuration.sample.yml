@@ -19,6 +19,9 @@ main:
         options:
             host: localhost
             port: 11211
+    db-cache:
+        type: ApcCache
+        options: {  }
     search-engine:
         type: phrasea
         options: []

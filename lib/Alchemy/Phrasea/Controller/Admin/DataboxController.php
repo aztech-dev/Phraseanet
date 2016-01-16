@@ -80,6 +80,8 @@ class DataboxController extends Controller
         $databox = null;
         $success = false;
         $msg = $this->app->trans('An error occured');
+        $exception = null;
+
         try {
             $databox = $this->findDataboxById($databox_id);
 
@@ -99,7 +101,7 @@ class DataboxController extends Controller
                 $msg = $this->app->trans('Successful removal');
             }
         } catch (\Exception $e) {
-
+            $exception = $e;
         }
         if (!$databox) {
             $this->app->abort(404, $this->app->trans('admin::base: databox not found', ['databox_id' => $databox_id]));
@@ -109,7 +111,8 @@ class DataboxController extends Controller
             return $this->app->json([
                 'success' => $success,
                 'msg'     => $msg,
-                'sbas_id' => $databox->get_sbas_id()
+                'sbas_id' => $databox->get_sbas_id(),
+                'exception' => $exception ? [ $exception->getMessage(), $exception->getTraceAsString() ] : null
             ]);
         }
 

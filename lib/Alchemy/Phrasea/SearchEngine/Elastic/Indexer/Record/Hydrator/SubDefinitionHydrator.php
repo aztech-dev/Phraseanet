@@ -16,26 +16,25 @@ use Doctrine\DBAL\Driver\Connection as DriverConnection;
 
 class SubDefinitionHydrator implements HydratorInterface
 {
+    /**
+     * @var Connection
+     */
     private $connection;
 
-    public function __construct(DriverConnection $connection)
+    /**
+     * @var HydratorQueryProvider
+     */
+    private $queryProvider;
+
+    public function __construct(Connection $connection, HydratorQueryProvider $queryProvider)
     {
         $this->connection = $connection;
+        $this->queryProvider = $queryProvider;
     }
 
     public function hydrateRecords(array &$records)
     {
-        $sql = <<<SQL
-            SELECT
-              s.record_id,
-              s.name,
-              s.height,
-              s.width,
-              CONCAT(TRIM(TRAILING '/' FROM s.path), '/', s.file) AS path
-            FROM subdef s
-            WHERE s.record_id IN (?)
-            AND s.name IN ('thumbnail', 'preview', 'thumbnailgif')
-SQL;
+        $sql = $this->queryProvider->getSubdefinitionQuery();
         $statement = $this->connection->executeQuery($sql,
             array(array_keys($records)),
             array(Connection::PARAM_INT_ARRAY)

@@ -1454,7 +1454,7 @@
           </field>
             <field>
                 <name>dsn</name>
-                <type>char(1024)</type>
+                <type>text</type>
                 <null>1</null>
                 <extra></extra>
                 <default></default>

@@ -44,6 +44,7 @@ use Alchemy\Phrasea\Model\Manipulator\ApiAccountManipulator;
 use Alchemy\Phrasea\Model\Manipulator\ApiOauthTokenManipulator;
 use Alchemy\Phrasea\Model\Manipulator\TokenManipulator;
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Tools\SchemaTool;
 use Gedmo\Timestampable\TimestampableListener;
 use Symfony\Component\Console\Input\InputInterface;
@@ -69,14 +70,19 @@ class RegenerateSqliteDb extends Command
             $fs->remove($json);
         }
 
+        /** @var EntityManager $em */
         $em = $this->container['orm.em'];
 
-        if ($fs->exists($em->getConnection()->getParams()['path'])) {
-            $fs->remove($em->getConnection()->getParams()['path']);
+        $schemaTool = new SchemaTool($em);
+
+        $allMetadata = $em->getMetadataFactory()->getAllMetadata();
+
+        foreach ($allMetadata as $metadata) {
+            /** @var ClassMetadata $metadata */
+            $em->getConnection()->exec("DROP TABLE IF EXISTS `{$metadata->getTableName()}`");
         }
 
-        $schemaTool = new SchemaTool($em);
-        $schemaTool->createSchema($em->getMetadataFactory()->getAllMetadata());
+        $schemaTool->updateSchema($allMetadata, true);
 
         $fixtures = [];
 

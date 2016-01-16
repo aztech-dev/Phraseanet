@@ -10,6 +10,8 @@
  */
 
 use Alchemy\Phrasea\CLI;
+use Alchemy\Phrasea\Command\Developer\DumpProfileCommand;
+use Alchemy\Phrasea\Command\Developer\ListProfilesCommand;
 use Alchemy\Phrasea\Core\Version;
 use Alchemy\Phrasea\Command\Developer\APIRoutesDumper;
 use Alchemy\Phrasea\Command\Developer\Behat;
@@ -82,6 +84,8 @@ $cli->command(new Uninstaller());
 $cli->command(new JsFixtures());
 $cli->command(new IniReset());
 $cli->command(new SetupTestsDbs());
+$cli->command(new ListProfilesCommand());
+$cli->command(new DumpProfileCommand());
 $cli->command(new \module_console_systemTemplateGenerator('system:generate-templates'));
 
 
