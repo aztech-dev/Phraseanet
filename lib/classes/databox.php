@@ -16,6 +16,7 @@ use Alchemy\Phrasea\Core\Thumbnail\ThumbnailedElement;
 use Alchemy\Phrasea\Core\Version\DataboxVersionRepository;
 use Alchemy\Phrasea\Databox\Databox as DataboxVO;
 use Alchemy\Phrasea\Databox\DataboxRepository;
+use Alchemy\Phrasea\Databox\Record\RecordDetailsRepository;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
 use Alchemy\Phrasea\Databox\Structure\Structure;
 use Alchemy\Phrasea\Model\Entities\User;
@@ -342,7 +343,7 @@ class databox extends base implements ThumbnailedElement
                 break;
             case self::CACHE_THESAURUS:
                 $this->thesaurus = null;
-                unset(self::$_dom_thesaurus[$this->id]);
+                unset(self::$_dom_thesaurus[$this->database->getDataboxId()]);
                 break;
             default:
                 break;
@@ -387,7 +388,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_record($record_id, $number = null)
     {
-        return new record_adapter($this->app, $this->id, $record_id, $number);
+        return new record_adapter($this->app, $this->databox->getDataboxId(), $record_id, $number);
     }
 
     public function get_label($code, $substitute = true)
@@ -447,49 +448,13 @@ class databox extends base implements ThumbnailedElement
 
     public function get_record_details($sort)
     {
-        $sql = "SELECT record.coll_id, ISNULL(coll.coll_id) AS lostcoll,
-                        COALESCE(asciiname, CONCAT('_',record.coll_id)) AS asciiname, name,
-                        SUM(1) AS n, SUM(size) AS siz FROM (record, subdef)
-                    LEFT JOIN coll ON record.coll_id=coll.coll_id
-                    WHERE record.record_id = subdef.record_id
-                    GROUP BY record.coll_id, name
-          UNION
-          SELECT coll.coll_id, 0, asciiname, '_' AS name, 0 AS n, 0 AS siz
-            FROM coll LEFT JOIN record ON record.coll_id=coll.coll_id
-            WHERE ISNULL(record.coll_id)
-                    GROUP BY record.coll_id, name";
+        static $recordDetailsRepository;
 
-        if ($sort == "obj") {
-            $sortk1 = "name";
-            $sortk2 = "asciiname";
-        } else {
-            $sortk1 = "asciiname";
-            $sortk2 = "name";
+        if ($recordDetailsRepository === null) {
+            $recordDetailsRepository = new RecordDetailsRepository($this->connection);
         }
 
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        foreach ($rs as $rowbas) {
-            if ( ! isset($trows[$rowbas[$sortk1]]))
-                $trows[$rowbas[$sortk1]] = [];
-            $trows[$rowbas[$sortk1]][$rowbas[$sortk2]] = [
-                "coll_id"   => $rowbas["coll_id"],
-                "asciiname" => $rowbas["asciiname"],
-                "lostcoll"  => $rowbas["lostcoll"],
-                "name"      => $rowbas["name"],
-                "n"         => $rowbas["n"],
-                "siz"       => $rowbas["siz"]
-            ];
-        }
-
-        ksort($trows);
-        foreach ($trows as $kgrp => $vgrp)
-            ksort($trows[$kgrp]);
-
-        return $trows;
+        return $recordDetailsRepository->getRecordDetails($sort);
     }
 
     public function get_record_amount()
@@ -570,7 +535,7 @@ class databox extends base implements ThumbnailedElement
 
     public function get_cache_key($option = null)
     {
-        return 'databox_' . $this->id . '_' . ($option ? $option . '_' : '');
+        return 'databox_' . $this->databox->getDataboxId() . '_' . ($option ? $option . '_' : '');
     }
 
     /**
@@ -637,7 +602,7 @@ class databox extends base implements ThumbnailedElement
 
         $sql = 'SELECT server_coll_id FROM bas WHERE sbas_id = :sbas_id';
         $stmt = $conn->prepare($sql);
-        $stmt->execute([':sbas_id' => $this->id]);
+        $stmt->execute([':sbas_id' => $this->databox->getDataboxId()]);
         $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         unset($stmt);
@@ -681,7 +646,7 @@ class databox extends base implements ThumbnailedElement
 
         $sql = 'SELECT base_id FROM bas WHERE sbas_id = :sbas_id AND active = "0"';
         $stmt = $conn->prepare($sql);
-        $stmt->execute([':sbas_id' => $this->id]);
+        $stmt->execute([':sbas_id' => $this->databox->getDataboxId()]);
         $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
 
@@ -747,7 +712,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_dom_thesaurus()
     {
-        $sbas_id = $this->id;
+        $sbas_id = $this->databox->getDataboxId();
         if (isset(self::$_dom_thesaurus[$sbas_id])) {
             return self::$_dom_thesaurus[$sbas_id];
         }
@@ -838,7 +803,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_xpath_thesaurus()
     {
-        $sbas_id = $this->id;
+        $sbas_id = $this->databox->getDataboxId();
         if (isset(self::$_xpath_thesaurus[$sbas_id])) {
             return self::$_xpath_thesaurus[$sbas_id];
         }
@@ -858,7 +823,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_sxml_thesaurus()
     {
-        $sbas_id = $this->id;
+        $sbas_id = $this->databox->getDataboxId();
         if (isset(self::$_sxml_thesaurus[$sbas_id])) {
             return self::$_sxml_thesaurus[$sbas_id];
         }

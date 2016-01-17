@@ -41,6 +41,23 @@ class Structure
     {
         $this->rawStructure = (string) $rawStructure;
 
+        $this->initializeObjects();
+    }
+
+    public function __sleep()
+    {
+        return [
+            'rawStructure'
+        ];
+    }
+
+    public function __wakeup()
+    {
+        $this->initializeObjects();
+    }
+
+    private function initializeObjects()
+    {
         if (trim($this->rawStructure) == '') {
             $this->simpleXmlElement = false;
             $this->domDocument = false;
@@ -48,6 +65,9 @@ class Structure
         }
     }
 
+    /**
+     * @return string
+     */
     public function getRawStructure()
     {
         return $this->rawStructure;

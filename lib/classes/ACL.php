@@ -188,11 +188,11 @@ class ACL implements cache_cacheableInterface
             (null, :usr_id, :sbas_id, :record_id, 1, :case, :pusher)';
 
         $params = [
-            ':usr_id'    => $this->user->getId()
-            , ':sbas_id'   => $record->getDataboxId()
-            , ':record_id' => $record->getRecordId()
-            , ':case'      => $action
-            , ':pusher'    => $pusher->getId()
+            ':usr_id'    => $this->user->getId(),
+            ':sbas_id'   => $record->getDataboxId(),
+            ':record_id' => $record->getRecordId(),
+            ':case'      => $action,
+            ':pusher'    => $pusher->getId()
         ];
 
         $stmt = $this->app->getApplicationBox()->get_connection()->prepare($sql);
