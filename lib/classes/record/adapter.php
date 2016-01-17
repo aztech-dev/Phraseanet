@@ -134,6 +134,9 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         return $this->getCreated();
     }
 
+    /**
+     * @return DateTime
+     */
     public function getCreated()
     {
         return $this->created;
@@ -148,6 +151,9 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         return $this->getUuid();
     }
 
+    /**
+     * @return string
+     */
     public function getUuid()
     {
         return $this->uuid;
@@ -162,6 +168,9 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         return $this->getUpdated();
     }
 
+    /**
+     * @return DateTime
+     */
     public function getUpdated()
     {
         return $this->updated;
@@ -335,6 +344,9 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         return $this->getCollectionId();
     }
 
+    /**
+     * @return mixed
+     */
     public function getCollectionId()
     {
         return $this->collection_id;
