@@ -41,18 +41,6 @@ class databox extends base implements ThumbnailedElement
     const CACHE_STRUCTURE = 'structure';
     const PIC_PDF = 'logopdf';
 
-    /** @var array */
-    protected static $_xpath_thesaurus = [];
-
-    /** @var array */
-    protected static $_dom_thesaurus = [];
-
-    /** @var array */
-    protected static $_thesaurus = [];
-
-    /** @var SimpleXMLElement */
-    protected static $_sxml_thesaurus = [];
-
     /**
      *
      * @param  int $sbas_id
