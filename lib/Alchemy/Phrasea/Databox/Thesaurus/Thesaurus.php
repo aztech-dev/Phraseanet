@@ -49,7 +49,7 @@ class Thesaurus
         $this->domDocument = null;
         $this->domXpath = null;
 
-        if (trim($this->rawStructure) == '') {
+        if (trim($this->rawThesaurus) == '') {
             $this->simpleXmlElement = false;
             $this->domDocument = false;
             $this->domXpath = false;
@@ -113,5 +113,4 @@ class Thesaurus
 
         return $this->domXpath;
     }
-
 }

@@ -158,6 +158,7 @@ EOQ;
             ':dsn' => $driverName . ':' . implode(';', $connectionParams),
             ':sqlengine' => $driverName
         ]);
+
         $statement->closeCursor();
 
         $databoxId = (int)$this->connection->lastInsertId();

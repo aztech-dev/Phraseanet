@@ -37,7 +37,6 @@ class CreateDataboxStep extends AbstractCreateStep
         $databox = $this->databoxRepository->mount($connection);
 
         $this->applicationBox->delete_data_from_cache(\appbox::CACHE_LIST_BASES);
-        \phrasea::reset_sbasDatas($this->applicationBox);
 
         return $databox;
     }
