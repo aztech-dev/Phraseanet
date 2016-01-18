@@ -13,14 +13,20 @@ class ValidateDataboxConnectionStep extends AbstractCreateStep
      */
     private $applicationBox;
 
-    public function __construct(\appbox $applicationBox)
+    /**
+     * @var DataboxConnectionValidator
+     */
+    private $connectionValidator;
+
+    public function __construct(\appbox $applicationBox, DataboxConnectionValidator $connectionValidator = null)
     {
         $this->applicationBox = $applicationBox;
+        $this->connectionValidator = $connectionValidator ?: new DataboxConnectionValidator();
     }
 
     public function execute(Connection $connection, \SplFileInfo $dataTemplate)
     {
-        DataboxConnectionValidator::validateConnection($this->applicationBox, $connection);
+        $this->connectionValidator->validateConnection($this->applicationBox, $connection);
 
         return $this->runNext($connection, $dataTemplate);
     }

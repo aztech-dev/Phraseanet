@@ -457,10 +457,6 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_meta_structure()
     {
-        if ($this->meta_struct) {
-            return $this->meta_struct;
-        }
-
         /** @var \Alchemy\Phrasea\Databox\Field\DataboxFieldRepository $fieldRepository */
         $fieldRepository = $this->app['repo.fields.factory']($this);
 
@@ -572,22 +568,17 @@ class databox extends base implements ThumbnailedElement
 
     public function saveCterms(DOMDocument $dom_cterms)
     {
-        $dom_cterms->documentElement->setAttribute("modification_date", $now = date("YmdHis"));
+        $this->candidateTerms = CandidateTerms::createFromDomDocument($dom_cterms);
 
-        $sql = "UPDATE pref SET value = :xml, updated_on = :date
-                WHERE prop='cterms'";
+        $preference = $this->preferencesRepository->findFirstByProperty('cterms');
 
-        $this->cterms = $dom_cterms->saveXML();
+        if (! $preference) {
+            $preference = new DataboxPreference(null, '', 'cterms');
+        }
 
-        $params = [
-            ':xml'  => $this->getCandidateTerms()->getRawTerms(),
-            ':date' => $now
-        ];
+        $preference->setValue($this->candidateTerms->getRawTerms());
 
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute($params);
-        $stmt->closeCursor();
-
+        $this->preferencesRepository->save($preference);
         $this->databoxRepository->save($this->databox);
 
         return $this;
@@ -792,14 +783,14 @@ class databox extends base implements ThumbnailedElement
 
     private function loadStructure()
     {
-        if (! $this->structure) {
-            $structure = '';
-            $preference = $this->preferencesRepository->findFirstByProperty('structure');
+        $structure = '';
+        $preference = $this->preferencesRepository->findFirstByProperty('structure');
 
-            if ($preference) {
-                $structure = $preference->getValue();
-            }
+        if ($preference) {
+            $structure = $preference->getValue();
+        }
 
+        if (! $this->structure || $structure !== $this->structure->getRawStructure()) {
             $this->structure = new Structure($structure);
         }
     }

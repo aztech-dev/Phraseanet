@@ -79,11 +79,6 @@ class CollectionRepositoryRegistry
     public function purgeRegistry()
     {
         $this->baseIdMap = null;
-
-        $appBox = $this->application->getApplicationBox();
-
-        \phrasea::reset_baseDatas($appBox);
-        \phrasea::reset_sbasDatas($appBox);
     }
 
     private function loadBaseIdMap()

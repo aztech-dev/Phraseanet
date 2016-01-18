@@ -4,6 +4,15 @@ namespace Alchemy\Phrasea\Databox\CandidateTerms;
 
 class CandidateTerms 
 {
+    public static function createFromDomDocument(\DOMDocument $candidateTermsDom)
+    {
+        $candidateTermsDom
+            ->documentElement
+            ->setAttribute("modification_date", $now = date("YmdHis"));
+
+        return new self($candidateTermsDom->saveXML());
+    }
+
     /**
      * @var string
      */

@@ -165,6 +165,9 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         return isset(self::$_stamps['base_id']) ? self::$_stamps['base_id'] : '';
     }
 
+    /**
+     * @deprecated Method is no longer applicable
+     */
     public static function purge()
     {
         // BC only
@@ -409,12 +412,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->getCollectionRepository()->save($this->collectionVO);
         $this->collectionRepositoryRegistry->purgeRegistry();
 
-        $this->dispatch(CollectionEvents::NAME_CHANGED,
-            new NameChangedEvent(
-                $this,
-                array("name_before"=>$old_name)
-            )
-        );
+        $this->dispatch(CollectionEvents::NAME_CHANGED, new NameChangedEvent($this, [ "name_before" => $old_name ]));
 
         return $this;
     }
@@ -433,10 +431,10 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->getCollectionRepository()->save($this->collectionVO);
         $this->collectionRepositoryRegistry->purgeRegistry();
 
-        $this->dispatch(CollectionEvents::LABEL_CHANGED, new LabelChangedEvent($this, array(
-            "lng"=>$code,
-            "label_before"=>$old_label,
-        )));
+        $this->dispatch(CollectionEvents::LABEL_CHANGED, new LabelChangedEvent($this, [
+            "lng" => $code,
+            "label_before" => $old_label
+        ]));
 
         return $this;
     }
@@ -528,12 +526,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
 
         $this->dispatch(
             CollectionEvents::SETTINGS_CHANGED,
-            new SettingsChangedEvent(
-                $this,
-                array(
-                    'settings_before' => $oldPreferences
-                )
-            )
+            new SettingsChangedEvent($this, [ 'settings_before' => $oldPreferences ])
         );
 
         return $this->collectionVO->getPreferences();

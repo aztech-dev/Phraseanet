@@ -214,8 +214,6 @@ class DataboxService
             $step->execute($databox->getPreferenceRepository(), $databoxVO, $structureDom);
         }
 
-        $databox->delete_data_from_cache(\databox::CACHE_STRUCTURE);
-
         $this->eventDispatcher->dispatch(
             DataboxEvents::STRUCTURE_CHANGED,
             new DataboxEvent\StructureChangedEvent($databox, [
