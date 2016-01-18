@@ -76,6 +76,25 @@ class DbalDataboxPreferencesRepository implements DataboxPreferencesRepository
     }
 
     /**
+     * @param string $propertyName
+     * @param string $locale
+     * @return DataboxPreference
+     */
+    public function findFirstByPropertyAndLocale($propertyName, $locale)
+    {
+        $statement = $this->connection->prepare('SELECT * FROM pref WHERE prop = :prop AND locale = :locale LIMIT 1');
+        $statement->execute([ ':prop' => $propertyName, ':locale' => $locale ]);
+
+        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return $this->createPreferenceVO($row);
+        }
+
+        return null;
+    }
+
+    /**
      * @param DataboxPreference $preference
      * @return mixed
      */

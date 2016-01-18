@@ -81,6 +81,24 @@ class CachingDataboxPreferencesRepository implements DataboxPreferencesRepositor
     }
 
     /**
+     * @param string $propertyName
+     * @param string $locale
+     * @return DataboxPreference[]
+     */
+    public function findFirstByPropertyAndLocale($propertyName, $locale)
+    {
+        $preferences = $this->findAll();
+
+        foreach ($preferences as $preference) {
+            if ($preference->getProperty() == $propertyName && $preference->getLocale() == $locale) {
+                return $preference;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param DataboxPreference $preference
      * @return bool
      */
