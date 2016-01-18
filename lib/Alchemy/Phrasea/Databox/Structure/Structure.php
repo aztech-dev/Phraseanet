@@ -58,6 +58,10 @@ class Structure
 
     private function initializeObjects()
     {
+        $this->simpleXmlElement = null;
+        $this->domDocument = null;
+        $this->domXpath = null;
+
         if (trim($this->rawStructure) == '') {
             $this->simpleXmlElement = false;
             $this->domDocument = false;

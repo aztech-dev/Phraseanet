@@ -46,7 +46,7 @@ class databox_subdefsStructure implements IteratorAggregate, Countable
     /**
      *
      * @param  databox $databox
-     * @return Array
+     * @param TranslatorInterface $translator
      */
     public function __construct(databox $databox, TranslatorInterface $translator)
     {
@@ -81,7 +81,7 @@ class databox_subdefsStructure implements IteratorAggregate, Countable
      */
     protected function load_subdefs()
     {
-        $sx_struct = $this->databox->get_sxml_structure();
+        $sx_struct = $this->databox->getStructure()->getSimpleXmlElement();
 
         $avSubdefs = [
             'image' => [],

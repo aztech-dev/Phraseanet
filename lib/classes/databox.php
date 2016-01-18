@@ -19,9 +19,11 @@ use Alchemy\Phrasea\Databox\DataboxRepositoriesFactory;
 use Alchemy\Phrasea\Databox\DataboxRepository;
 use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Databox\DataboxTermsOfUseRepository;
+use Alchemy\Phrasea\Databox\Preference\DataboxPreference;
 use Alchemy\Phrasea\Databox\Record\RecordDetailsRepository;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
 use Alchemy\Phrasea\Databox\Structure\Structure;
+use Alchemy\Phrasea\Databox\Thesaurus\Thesaurus;
 use Alchemy\Phrasea\Model\Entities\User;
 use Alchemy\Phrasea\Status\StatusStructure;
 use Alchemy\Phrasea\Status\StatusStructureFactory;
@@ -33,14 +35,11 @@ use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
 
 class databox extends base implements ThumbnailedElement
 {
-
     const BASE_TYPE = self::DATA_BOX;
     const CACHE_META_STRUCT = 'meta_struct';
-    const CACHE_THESAURUS = 'thesaurus';
     const CACHE_COLLECTIONS = 'collections';
     const CACHE_STRUCTURE = 'structure';
     const PIC_PDF = 'logopdf';
-    const CACHE_CGUS = 'cgus';
 
     /** @var array */
     protected static $_xpath_thesaurus = [];
@@ -84,9 +83,6 @@ class databox extends base implements ThumbnailedElement
     /** @var databox_subdefsStructure */
     protected $subdef_struct;
 
-    /** @var string */
-    protected $thesaurus;
-
     /** @var \appbox */
     private $applicationBox;
 
@@ -116,6 +112,9 @@ class databox extends base implements ThumbnailedElement
 
     /** @var mixed[] */
     private $termsOfUse = null;
+
+    /** @var Thesaurus */
+    private $thesaurus = null;
 
     /**
      * @param Application $app
@@ -278,6 +277,13 @@ class databox extends base implements ThumbnailedElement
         return $this->getStructure()->getDomXpath();
     }
 
+    public function getThesaurus()
+    {
+        $this->loadThesaurus();
+
+        return $this->thesaurus;
+    }
+
     /**
      * @return $this
      * @deprecated Do not use directly
@@ -373,7 +379,7 @@ class databox extends base implements ThumbnailedElement
     public function get_label($code, $substitute = true)
     {
         if ($substitute) {
-            return $this->databox->getLabelOrDefault($code, $this->databox->getViewName());
+            return $this->databox->getLabelOrDefault($code, $this->databox->getViewName(true));
         }
 
         return $this->databox->getLabel($code);
@@ -444,6 +450,7 @@ class databox extends base implements ThumbnailedElement
     public function unmount_databox()
     {
         $service = $this->getDataboxService();
+
         $service->unmountDatabox($this);
     }
 
@@ -583,9 +590,10 @@ class databox extends base implements ThumbnailedElement
                 WHERE prop='cterms'";
 
         $this->cterms = $dom_cterms->saveXML();
+
         $params = [
-            ':xml'  => $this->cterms
-            , ':date' => $now
+            ':xml'  => $this->getCandidateTerms()->getRawTerms(),
+            ':date' => $now
         ];
 
         $stmt = $this->get_connection()->prepare($sql);
@@ -601,62 +609,25 @@ class databox extends base implements ThumbnailedElement
     {
         $old_thesaurus = $this->get_dom_thesaurus();
 
-        $dom_thesaurus->documentElement->setAttribute("modification_date", $now = date("YmdHis"));
-        $this->thesaurus = $dom_thesaurus->saveXML();
+        $this->thesaurus = Thesaurus::createFromDomDocument($dom_thesaurus);
 
-        $sql = "UPDATE pref SET value = :xml, updated_on = :date WHERE prop='thesaurus'";
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute([':xml'  => $this->thesaurus, ':date' => $now]);
-        $stmt->closeCursor();
-        $this->delete_data_from_cache(databox::CACHE_THESAURUS);
+        $preference = $this->preferencesRepository->findFirstByProperty('thesaurus');
 
+        if (! $preference) {
+            $preference = new DataboxPreference(null, '', 'thesaurus');
+        }
+
+        $preference->setValue($this->thesaurus->getRawThesaurus());
+
+        $this->preferencesRepository->save($preference);
         $this->databoxRepository->save($this->databox);
 
         $this->app['dispatcher']->dispatch(
             DataboxEvents::THESAURUS_CHANGED,
-            new ThesaurusChangedEvent(
-                $this,
-                array(
-                    'dom_before'=>$old_thesaurus,
-                )
-            )
+            new ThesaurusChangedEvent($this, [ 'dom_before' => $old_thesaurus ])
         );
 
         return $this;
-    }
-
-    /**
-     * @return DOMDocument
-     */
-    public function get_dom_thesaurus()
-    {
-        $sbas_id = $this->databox->getDataboxId();
-        if (isset(self::$_dom_thesaurus[$sbas_id])) {
-            return self::$_dom_thesaurus[$sbas_id];
-        }
-
-        $thesaurus = $this->get_thesaurus();
-
-        $dom = new DOMDocument();
-
-        if ($thesaurus && false !== $dom->loadXML($thesaurus)) {
-            self::$_dom_thesaurus[$sbas_id] = $dom;
-        } else {
-            self::$_dom_thesaurus[$sbas_id] = false;
-            unset($dom);
-        }
-
-        return self::$_dom_thesaurus[$sbas_id];
-    }
-
-    /**
-     * @return string
-     */
-    public function get_thesaurus()
-    {
-        $preference = $this->preferencesRepository->findFirstByProperty('thesaurus');
-
-        return $preference->getValue();
     }
 
     /**
@@ -697,43 +668,40 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
+     * @return DOMDocument
+     */
+    public function get_dom_thesaurus()
+    {
+        return $this->getThesaurus()->getDomDocument();
+    }
+
+    /**
+     * @return string
+     * @deprecated Use \databox::getThesaurus()->getRawThesaurus() instead
+     */
+    public function get_thesaurus()
+    {
+        $this->loadThesaurus();
+
+        return $this->thesaurus->getRawThesaurus();
+    }
+
+    /**
      * @return DOMXpath
+     * @deprecated Use \databox::getThesaurus()->getDomXpath() instead
      */
     public function get_xpath_thesaurus()
     {
-        $sbas_id = $this->databox->getDataboxId();
-        if (isset(self::$_xpath_thesaurus[$sbas_id])) {
-            return self::$_xpath_thesaurus[$sbas_id];
-        }
-
-        $DOM_thesaurus = $this->get_dom_thesaurus();
-
-        if ($DOM_thesaurus && ($tmp = new thesaurus_xpath($DOM_thesaurus)) !== false)
-            self::$_xpath_thesaurus[$sbas_id] = $tmp;
-        else
-            self::$_xpath_thesaurus[$sbas_id] = false;
-
-        return self::$_xpath_thesaurus[$sbas_id];
+        return $this->getThesaurus()->getDomXpath();
     }
 
     /**
      * @return SimpleXMLElement
+     * @deprecated Use \databox::getThesaurus()->getSimpleXmlElement() instead
      */
     public function get_sxml_thesaurus()
     {
-        $sbas_id = $this->databox->getDataboxId();
-        if (isset(self::$_sxml_thesaurus[$sbas_id])) {
-            return self::$_sxml_thesaurus[$sbas_id];
-        }
-
-        $thesaurus = $this->get_thesaurus();
-
-        if ($thesaurus && false !== $tmp = simplexml_load_string($thesaurus))
-            self::$_sxml_thesaurus[$sbas_id] = $tmp;
-        else
-            self::$_sxml_thesaurus[$sbas_id] = false;
-
-        return self::$_sxml_thesaurus[$sbas_id];
+        return $this->getThesaurus()->getSimpleXmlElement();
     }
 
     /**
@@ -745,7 +713,6 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
-     *
      * @deprecated Use \databox::getCandidateTerms()->getRawTerms() instead
      */
     public function get_cterms()
@@ -852,6 +819,20 @@ class databox extends base implements ThumbnailedElement
     private function loadTermsOfUse()
     {
         $this->termsOfUse = $this->termsOfUseRepository->getTermsOfUse();
+    }
+
+    private function loadThesaurus()
+    {
+        if (! $this->thesaurus) {
+            $thesaurus = '';
+            $preference = $this->preferencesRepository->findFirstByProperty('thesaurus');
+
+            if ($preference) {
+                $thesaurus = $preference->getValue();
+            }
+
+            $this->thesaurus = new Thesaurus($thesaurus);
+        }
     }
 
     /**

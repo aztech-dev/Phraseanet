@@ -1,13 +1,22 @@
 <?php
 
-namespace Alchemy\Phrasea\Databox\CandidateTerms;
+namespace Alchemy\Phrasea\Databox\Thesaurus;
 
-class CandidateTerms 
+class Thesaurus 
 {
+    public static function createFromDomDocument(\DOMDocument $thesaurusDocument)
+    {
+        $thesaurusDocument
+            ->documentElement
+            ->setAttribute("modification_date", $now = date("YmdHis"));
+
+        return new self($thesaurusDocument->saveXML());
+    }
+
     /**
      * @var string
      */
-    private $rawTerms;
+    private $rawThesaurus;
 
     /**
      * @var \SimpleXMLElement|false|null
@@ -24,9 +33,12 @@ class CandidateTerms
      */
     private $domXpath = null;
 
-    public function __construct($rawTerms = '')
+    /**
+     * @param string $rawThesaurus
+     */
+    public function __construct($rawThesaurus = '')
     {
-        $this->rawTerms = (string) $rawTerms;
+        $this->rawThesaurus = (string) $rawThesaurus;
 
         $this->initializeObjects();
     }
@@ -37,7 +49,7 @@ class CandidateTerms
         $this->domDocument = null;
         $this->domXpath = null;
 
-        if (trim($this->rawTerms) == '') {
+        if (trim($this->rawStructure) == '') {
             $this->simpleXmlElement = false;
             $this->domDocument = false;
             $this->domXpath = false;
@@ -47,9 +59,9 @@ class CandidateTerms
     /**
      * @return string
      */
-    public function getRawTerms()
+    public function getRawThesaurus()
     {
-        return $this->rawTerms;
+        return $this->rawThesaurus;
     }
 
     /**
@@ -58,7 +70,7 @@ class CandidateTerms
     public function getSimpleXmlElement()
     {
         if ($this->simpleXmlElement === null) {
-            $this->simpleXmlElement = simplexml_load_string($this->rawTerms);
+            $this->simpleXmlElement = simplexml_load_string($this->rawThesaurus);
         }
 
         return $this->simpleXmlElement;
@@ -78,7 +90,7 @@ class CandidateTerms
 
             $this->domDocument = false;
 
-            if ($dom->loadXML($this->rawTerms) !== false) {
+            if ($dom->loadXML($this->rawThesaurus) !== false) {
                 $this->domDocument = $dom;
             }
         }
