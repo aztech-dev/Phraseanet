@@ -56,7 +56,7 @@ class ArrayCacheDataboxPreferencesRepository implements DataboxPreferencesReposi
 
     /**
      * @param string $propertyName
-     * @return DataboxPreference
+     * @return DataboxPreference|null
      */
     public function findFirstByProperty($propertyName)
     {
@@ -64,6 +64,24 @@ class ArrayCacheDataboxPreferencesRepository implements DataboxPreferencesReposi
 
         foreach ($preferences as $preference) {
             if ($preference->getProperty() == $propertyName) {
+                return $preference;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param string $propertyName
+     * @param string $locale
+     * @return DataboxPreference|null
+     */
+    public function findFirstByPropertyAndLocale($propertyName, $locale)
+    {
+        $preferences = $this->findAll();
+
+        foreach ($preferences as $preference) {
+            if ($preference->getProperty() == $propertyName && $preference->getLocale() == $locale) {
                 return $preference;
             }
         }

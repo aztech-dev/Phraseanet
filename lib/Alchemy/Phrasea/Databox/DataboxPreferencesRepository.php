@@ -20,9 +20,16 @@ interface DataboxPreferencesRepository
 
     /**
      * @param string $propertyName
-     * @return DataboxPreference
+     * @return DataboxPreference|null
      */
     public function findFirstByProperty($propertyName);
+
+    /**
+     * @param $propertyName
+     * @param $locale
+     * @return DataboxPreference|null
+     */
+    public function findFirstByPropertyAndLocale($propertyName, $locale);
 
     /**
      * @param DataboxPreference $preference

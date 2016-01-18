@@ -64,4 +64,24 @@ class DataboxTermsOfUseRepository
 
         return $termsOfUses;
     }
+
+    /**
+     * @param string $locale
+     * @param string $terms
+     * @param bool $resetDate
+     */
+    public function updateTermsOfUse($locale, $terms, $resetDate)
+    {
+        $terms = str_replace(
+            ["\r\n", "\n", "\r"],
+            ['', '', ''],
+            strip_tags($terms, '<p><strong><a><ul><ol><li><h1><h2><h3><h4><h5><h6>')
+        );
+
+        $termsEntity = $this->preferencesRepository->findFirstByPropertyAndLocale('ToU', $locale);
+
+        $termsEntity->setValue($terms, (bool) $resetDate);
+
+        $this->preferencesRepository->save($termsEntity);
+    }
 }

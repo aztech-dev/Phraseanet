@@ -17,6 +17,7 @@ use Alchemy\Phrasea\Databox\Process\Reindex\ReindexStep;
 use Alchemy\Phrasea\Databox\Process\ReplaceStructure\ReplaceStructureStep;
 use Alchemy\Phrasea\Databox\Process\SetStructure\SetStructureStep;
 use Alchemy\Phrasea\Databox\Process\Unmount\UnmountStep;
+use Alchemy\Phrasea\Databox\Process\UpdateTerms\UpdateTermsProcess;
 use Alchemy\Phrasea\Exception\RuntimeException;
 use Alchemy\Phrasea\Model\Entities\User;
 use Doctrine\DBAL\Connection;
@@ -220,6 +221,27 @@ class DataboxService
             new DataboxEvent\StructureChangedEvent($databox, [
                 'dom_before' => $previousStructure->getRawStructure()
             ])
+        );
+    }
+
+    /**
+     * @param \databox $databox
+     * @param string $locale
+     * @param string $terms
+     * @param bool $resetDate
+     */
+    public function updateDataboxTermsOfUse(\databox $databox, $locale, $terms, $resetDate)
+    {
+        $previousTerms = $databox->getTermsOfUse();
+
+        foreach ($this->processRegistry->getProcessSteps(UpdateTermsProcess::class) as $step) {
+            /** @var $step UpdateTermsProcess $step */
+            $step->execute($databox, $locale, $terms, (bool) $resetDate);
+        }
+
+        $this->eventDispatcher->dispatch(
+            DataboxEvents::TOU_CHANGED,
+            new DataboxEvent\TouChangedEvent($databox, [ 'tou_before' => $previousTerms ])
         );
     }
 

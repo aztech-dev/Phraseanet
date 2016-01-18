@@ -12,10 +12,12 @@
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
 use Alchemy\Phrasea\Core\Thumbnail\ThumbnailedElement;
+use Alchemy\Phrasea\Databox\CandidateTerms\CandidateTerms;
 use Alchemy\Phrasea\Databox\Databox as DataboxVO;
 use Alchemy\Phrasea\Databox\DataboxPreferencesRepository;
 use Alchemy\Phrasea\Databox\DataboxRepositoriesFactory;
 use Alchemy\Phrasea\Databox\DataboxRepository;
+use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Databox\DataboxTermsOfUseRepository;
 use Alchemy\Phrasea\Databox\Record\RecordDetailsRepository;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
@@ -28,7 +30,6 @@ use Doctrine\DBAL\Driver\Statement;
 use Symfony\Component\HttpFoundation\File\File;
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
 use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
-use Alchemy\Phrasea\Core\Event\Databox\TouChangedEvent;
 
 class databox extends base implements ThumbnailedElement
 {
@@ -69,13 +70,13 @@ class databox extends base implements ThumbnailedElement
         return $out;
     }
 
+    /**
+     * @deprecated Method is no longer required, cache busting is handled transparently.
+     */
     public static function purge()
     {
-        self::$_xpath_thesaurus = self::$_dom_thesaurus = self::$_thesaurus = self::$_sxml_thesaurus = [];
+        // No op. Method is left for BC only
     }
-
-    /** @var Structure */
-    protected $structure = null;
 
     /** @var databox_descriptionStructure */
     protected $meta_struct;
@@ -85,14 +86,6 @@ class databox extends base implements ThumbnailedElement
 
     /** @var string */
     protected $thesaurus;
-
-    /** @var string */
-    protected $cterms;
-
-    /** @var DOMDocument */
-    protected $_dom_cterms = null;
-
-    protected $cgus;
 
     /** @var \appbox */
     private $applicationBox;
@@ -109,13 +102,20 @@ class databox extends base implements ThumbnailedElement
     /** @var DataboxPreferencesRepository */
     private $preferencesRepository;
 
-    /**
-     * @var DataboxTermsOfUseRepository
-     */
+    /** @var DataboxTermsOfUseRepository */
     private $termsOfUseRepository;
 
     /** @var DataboxVO */
     private $databox;
+
+    /** @var CandidateTerms */
+    private $candidateTerms = null;
+
+    /** @var Structure */
+    private $structure = null;
+
+    /** @var mixed[] */
+    private $termsOfUse = null;
 
     /**
      * @param Application $app
@@ -162,6 +162,32 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
+     * @return DataboxPreferencesRepository
+     */
+    public function getPreferenceRepository()
+    {
+        return $this->preferencesRepository;
+    }
+
+    /**
+     * @return DataboxTermsOfUseRepository
+     */
+    public function getTermsOfUseRepository()
+    {
+        return $this->termsOfUseRepository;
+    }
+
+    /**
+     * @return CandidateTerms
+     */
+    public function getCandidateTerms()
+    {
+        $this->loadCandidateTerms();
+
+        return $this->candidateTerms;
+    }
+
+    /**
      * @return Structure
      */
     public function getStructure()
@@ -172,14 +198,6 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
-     * @return DataboxPreferencesRepository
-     */
-    public function getPreferenceRepository()
-    {
-        return $this->preferencesRepository;
-    }
-
-    /**
      * @param SplFileInfo $data_template
      * @param $path_doc
      * @return $this
@@ -187,8 +205,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function setNewStructure(\SplFileInfo $data_template, $path_doc)
     {
-        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
-        $service = $this->app['databoxes.service'];
+        $service = $this->getDataboxService();
 
         $service->setDataboxStructure($this, $data_template, $path_doc);
 
@@ -203,8 +220,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function saveStructure(DOMDocument $dom_struct)
     {
-        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
-        $service = $this->app['databoxes.service'];
+        $service = $this->getDataboxService();
 
         $service->replaceDataboxStructure($this, $dom_struct);
 
@@ -214,14 +230,24 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
+     * @return mixed
+     */
+    public function getTermsOfUse()
+    {
+        if (! $this->termsOfUse) {
+            $this->loadTermsOfUse();
+        }
+
+        return $this->termsOfUse;
+    }
+
+    /**
      * @return DOMDocument
      * @deprecated use \databox::getStructure() instead
      */
     public function get_dom_structure()
     {
-        $this->loadStructure();
-
-        return $this->structure->getDomDocument();
+        return $this->getStructure()->getDomDocument();
     }
 
     /**
@@ -230,9 +256,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_structure()
     {
-        $this->loadStructure();
-
-        return $this->structure->getRawStructure();
+        return $this->getStructure()->getRawStructure();
     }
 
     /**
@@ -242,9 +266,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_sxml_structure()
     {
-        $this->loadStructure();
-
-        return $this->structure->getSimpleXmlElement();
+        return $this->getStructure()->getSimpleXmlElement();
     }
 
     /**
@@ -253,9 +275,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_xpath_structure()
     {
-        $this->loadStructure();
-
-        return $this->structure->getDomXpath();
+        return $this->getStructure()->getDomXpath();
     }
 
     /**
@@ -309,29 +329,6 @@ class databox extends base implements ThumbnailedElement
     public function updateThumbnail($thumbnailType, File $file = null)
     {
         $this->delete_data_from_cache('printLogo');
-    }
-
-    public function delete_data_from_cache($option = null)
-    {
-        switch ($option) {
-            case self::CACHE_CGUS:
-                $this->cgus = null;
-                break;
-            case self::CACHE_META_STRUCT:
-                $this->meta_struct = null;
-                break;
-            case self::CACHE_STRUCTURE:
-                $this->structure = null;
-                break;
-            case self::CACHE_THESAURUS:
-                $this->thesaurus = null;
-                unset(self::$_dom_thesaurus[$this->databox->getDataboxId()]);
-                break;
-            default:
-                break;
-        }
-
-        parent::delete_data_from_cache($option);
     }
 
     /**
@@ -446,9 +443,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function unmount_databox()
     {
-        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
-        $service = $this->app['databoxes.service'];
-
+        $service = $this->getDataboxService();
         $service->unmountDatabox($this);
     }
 
@@ -498,8 +493,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function delete()
     {
-        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
-        $service = $this->app['databoxes.service'];
+        $service = $this->getDataboxService();
 
         $service->deleteDatabox($this);
     }
@@ -673,8 +667,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function registerAdmin(User $user)
     {
-        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
-        $service = $this->app['databoxes.service'];
+        $service = $this->getDataboxService();
 
         $service->addDataboxAdmin($this, $user);
 
@@ -692,12 +685,11 @@ class databox extends base implements ThumbnailedElement
 
     /**
      * @return $this
-     * @deprecated User DataboxService::reindexDatabox instead
+     * @deprecated Use DataboxService::reindexDatabox instead
      */
     public function reindex()
     {
-        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
-        $service = $this->app['databoxes.service'];
+        $service = $this->getDataboxService();
 
         $service->reindexDatabox($this);
 
@@ -745,80 +737,38 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
-     * @return DOMDocument
+     * @deprecated Use \databox::getCandidateTerms()->getDomDocument() instead
      */
     public function get_dom_cterms()
     {
-        if ($this->_dom_cterms === null) {
-            $dom = new DOMDocument();
-
-            $dom->standalone = true;
-            $dom->preserveWhiteSpace = false;
-            $dom->formatOutput = true;
-
-            $this->_dom_cterms = false;
-
-            if ($this->cterms  = $this->get_cterms()&& $dom->loadXML($this->cterms) !== false) {
-                $this->_dom_cterms = $dom;
-            }
-        }
-
-        return $this->_dom_cterms;
+        return $this->getCandidateTerms()->getDomDocument();
     }
 
     /**
      *
-     * @return string
+     * @deprecated Use \databox::getCandidateTerms()->getRawTerms() instead
      */
     public function get_cterms()
     {
-        if (! $this->cterms) {
-            $sql = "SELECT value FROM pref WHERE prop='cterms'";
-            $stmt = $this->get_connection()->prepare($sql);
-            $stmt->execute();
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stmt->closeCursor();
-
-            if ($row) {
-                $this->cterms = $row['value'];
-            }
-        }
-
-        return $this->cterms;
+        return $this->getCandidateTerms()->getRawTerms();
     }
 
+    /**
+     * @deprecated Use DataboxService::updateTermsOfUse instead
+     */
     public function update_cgus($locale, $terms, $reset_date)
     {
-        $old_tou = $this->get_cgus();
-
-        $terms = str_replace(["\r\n", "\n", "\r"], ['', '', ''], strip_tags($terms, '<p><strong><a><ul><ol><li><h1><h2><h3><h4><h5><h6>'));
-        $sql = 'UPDATE pref SET value = :terms ';
-
-        if ($reset_date)
-            $sql .= ', updated_on=NOW() ';
-
-        $sql .= ' WHERE prop="ToU" AND locale = :locale';
-
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute([':terms'    => $terms, ':locale'   => $locale]);
-        $stmt->closeCursor();
-        $this->cgus = null;
-
-        $this->app['dispatcher']->dispatch(
-            DataboxEvents::TOU_CHANGED,
-            new TouChangedEvent($this, [ 'tou_before' => $old_tou ])
-        );
+        $this->getDataboxService()->updateDataboxTermsOfUse($this, $locale, $terms, (bool) $reset_date);
 
         return $this;
     }
 
+    /**
+     * @deprecated Use \databox::getTermsOfUse() instead
+     */
     public function get_cgus()
     {
-        if (! $this->cgus) {
-            $this->load_cgus();
-        }
-
-        return $this->cgus;
+        return $this->getTermsOfUse();
     }
 
     public function __sleep()
@@ -840,6 +790,7 @@ class databox extends base implements ThumbnailedElement
      * Tells whether registration is enabled or not.
      *
      * @return boolean
+     * @deprecated Use \databox::getStructure()->isRegistrationEnabled() instead
      */
     public function isRegistrationEnabled()
     {
@@ -854,43 +805,60 @@ class databox extends base implements ThumbnailedElement
     public function getRawData()
     {
         return [
-            'ord' => $this->databox->getDisplayIndex(),
-            'viewname' => $this->databox->getViewName(),
-            'label_en' => $this->databox->getLabel('en'),
-            'label_fr' => $this->databox->getLabel('fr'),
-            'label_de' => $this->databox->getLabel('de'),
-            'label_nl' => $this->databox->getLabel('nl'),
-            'dsn'      => $this->databox->getDsn(),
-            'host'     => $this->databox->getHost(),
-            'port'     => $this->databox->getPort(),
-            'user'     => $this->databox->getUser(),
-            'pwd'      => $this->databox->getPassword(),
-            'dbname'   => $this->databox->getDatabase(),
-            'sqlengine'   => $this->databox->getType()
+            'ord'       => $this->databox->getDisplayIndex(),
+            'viewname'  => $this->databox->getViewName(),
+            'label_en'  => $this->databox->getLabel('en'),
+            'label_fr'  => $this->databox->getLabel('fr'),
+            'label_de'  => $this->databox->getLabel('de'),
+            'label_nl'  => $this->databox->getLabel('nl'),
+            'dsn'       => $this->databox->getDsn(),
+            'host'      => $this->databox->getHost(),
+            'port'      => $this->databox->getPort(),
+            'user'      => $this->databox->getUser(),
+            'pwd'       => $this->databox->getPassword(),
+            'dbname'    => $this->databox->getDatabase(),
+            'sqlengine' => $this->databox->getType()
         ];
     }
 
-    protected function retrieve_structure()
+    private function loadCandidateTerms()
     {
-        $structure = '';
-        $preference = $this->preferencesRepository->findFirstByProperty('structure');
+        if (! $this->candidateTerms) {
+            $terms = '';
+            $preference = $this->preferencesRepository->findFirstByProperty('cterms');
 
-        if ($preference) {
-            $structure = $preference->getValue();
+            if ($preference) {
+                $terms = $preference->getValue();
+            }
+
+            $this->candidateTerms = new CandidateTerms($terms);
         }
-
-        return new Structure($structure);
-    }
-
-    protected function load_cgus()
-    {
-        $this->cgus = $this->termsOfUseRepository->getTermsOfUse();
     }
 
     private function loadStructure()
     {
         if (! $this->structure) {
-            $this->structure = $this->retrieve_structure();
+            $structure = '';
+            $preference = $this->preferencesRepository->findFirstByProperty('structure');
+
+            if ($preference) {
+                $structure = $preference->getValue();
+            }
+
+            $this->structure = new Structure($structure);
         }
+    }
+
+    private function loadTermsOfUse()
+    {
+        $this->termsOfUse = $this->termsOfUseRepository->getTermsOfUse();
+    }
+
+    /**
+     * @return DataboxService
+     */
+    private function getDataboxService()
+    {
+        return $service = $this->app['databoxes.service'];
     }
 }
