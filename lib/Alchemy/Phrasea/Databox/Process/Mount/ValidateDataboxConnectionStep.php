@@ -13,11 +13,18 @@ class ValidateDataboxConnectionStep extends AbstractMountStep
     private $applicationBox;
 
     /**
-     * @param \appbox $applicationBox
+     * @var DataboxConnectionValidator
      */
-    public function __construct(\appbox $applicationBox)
+    private $connectionValidator;
+
+    /**
+     * @param \appbox $applicationBox
+     * @param DataboxConnectionValidator $connectionValidator
+     */
+    public function __construct(\appbox $applicationBox, DataboxConnectionValidator $connectionValidator = null)
     {
         $this->applicationBox = $applicationBox;
+        $this->connectionValidator = $connectionValidator ?: new DataboxConnectionValidator();
     }
 
     /**
@@ -26,7 +33,7 @@ class ValidateDataboxConnectionStep extends AbstractMountStep
      */
     public function execute(Connection $connection)
     {
-        DataboxConnectionValidator::validateConnection($this->applicationBox, $connection);
+        $this->connectionValidator->validateConnection($this->applicationBox, $connection);
 
         return $this->runNext($connection);
     }

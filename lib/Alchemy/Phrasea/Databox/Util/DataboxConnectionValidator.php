@@ -4,9 +4,14 @@ namespace Alchemy\Phrasea\Databox\Util;
 
 use Doctrine\DBAL\Connection;
 
+/**
+ * Class DataboxConnectionValidator
+ * @package Alchemy\Phrasea\Databox\Util
+ * @deprecated Should be replaced by a method in DataboxRepository
+ */
 class DataboxConnectionValidator
 {
-    public static function validateConnection(\appbox $applicationBox, Connection $connection)
+    public function validateConnection(\appbox $applicationBox, Connection $connection)
     {
         $sql = 'SELECT sbas_id
                 FROM sbas
