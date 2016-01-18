@@ -120,7 +120,6 @@ class phraseadate
     }
 
     /**
-     *
      * @param  DateTime $date
      * @return string
      */

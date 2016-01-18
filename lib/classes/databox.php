@@ -11,11 +11,12 @@
 
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
-use Alchemy\Phrasea\Core\PhraseaTokens;
 use Alchemy\Phrasea\Core\Thumbnail\ThumbnailedElement;
-use Alchemy\Phrasea\Core\Version\DataboxVersionRepository;
 use Alchemy\Phrasea\Databox\Databox as DataboxVO;
+use Alchemy\Phrasea\Databox\DataboxPreferencesRepository;
+use Alchemy\Phrasea\Databox\DataboxRepositoriesFactory;
 use Alchemy\Phrasea\Databox\DataboxRepository;
+use Alchemy\Phrasea\Databox\DataboxTermsOfUseRepository;
 use Alchemy\Phrasea\Databox\Record\RecordDetailsRepository;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
 use Alchemy\Phrasea\Databox\Structure\Structure;
@@ -102,6 +103,17 @@ class databox extends base implements ThumbnailedElement
     /** @var RecordRepository */
     private $recordRepository;
 
+    /** @var RecordDetailsRepository */
+    private $recordDetailsRepository;
+
+    /** @var DataboxPreferencesRepository */
+    private $preferencesRepository;
+
+    /**
+     * @var DataboxTermsOfUseRepository
+     */
+    private $termsOfUseRepository;
+
     /** @var DataboxVO */
     private $databox;
 
@@ -116,11 +128,19 @@ class databox extends base implements ThumbnailedElement
         $this->databoxRepository = $databoxRepository;
         $this->databox = $databox;
 
+        $factory = new DataboxRepositoriesFactory(
+            $app['locales.available'],
+            $app['cache'],
+            'databox_' . $databox->getDataboxId()
+        );
+
         $connection = $app['dbal.provider']($databox->getConnectionParameters());
 
-        $versionRepository = new DataboxVersionRepository($connection);
+        $this->preferencesRepository = $factory->getPreferencesRepository($connection);
+        $this->recordDetailsRepository = $factory->getRecordDetailsRepository($connection);
+        $this->termsOfUseRepository = $factory->getTermsOfUseRepository($connection);
 
-        parent::__construct($app, $connection, $versionRepository);
+        parent::__construct($app, $connection, $factory->getVersionRepository($connection));
     }
 
     /**
@@ -130,7 +150,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function createCollection($name, User $owner = null)
     {
-        return \collection::create($this->app, $this, $this->get_appbox(), $name, $owner);
+        return \collection::create($this->app, $this, $this->applicationBox, $name, $owner);
     }
 
     /**
@@ -141,30 +161,36 @@ class databox extends base implements ThumbnailedElement
         return $this->databox;
     }
 
+    /**
+     * @return Structure
+     */
     public function getStructure()
     {
         $this->loadStructure();
 
         return $this->structure;
     }
+
+    /**
+     * @return DataboxPreferencesRepository
+     */
+    public function getPreferenceRepository()
+    {
+        return $this->preferencesRepository;
+    }
+
+    /**
+     * @param SplFileInfo $data_template
+     * @param $path_doc
+     * @return $this
+     * @deprecated Use DataboxService::setDataboxStructure() instead
+     */
     public function setNewStructure(\SplFileInfo $data_template, $path_doc)
     {
-        if ( ! file_exists($data_template->getPathname())) {
-            throw new \InvalidArgumentException(sprintf('File %s does not exists'));
-        }
+        /** @var \Alchemy\Phrasea\Databox\DataboxService $service */
+        $service = $this->app['databoxes.service'];
 
-        $contents = file_get_contents($data_template->getPathname());
-        $contents = str_replace(
-            ["{{basename}}", "{{datapathnoweb}}"],
-            [$this->connection->getDatabase(), rtrim($path_doc, '/').'/'],
-            $contents
-        );
-
-        $dom_doc = new DOMDocument();
-        $dom_doc->loadXML($contents);
-
-        $this->saveStructure($dom_doc);
-        $this->feed_meta_fields();
+        $service->setDataboxStructure($this, $data_template, $path_doc);
 
         return $this;
     }
@@ -232,59 +258,12 @@ class databox extends base implements ThumbnailedElement
         return $this->structure->getDomXpath();
     }
 
+    /**
+     * @return $this
+     * @deprecated Do not use directly
+     */
     public function feed_meta_fields()
     {
-        $structure = $this->getStructure();
-        $sxe = $structure->getSimpleXmlElement();
-        $dom_struct = $structure->getDomDocument();
-        $xp_struct = $structure->getDomXpath();
-
-        foreach ($sxe->description->children() as $fname => $field) {
-            $fname = (string) $fname;
-            $src = trim(isset($field['src']) ? str_replace('/rdf:RDF/rdf:Description/', '', $field['src']) : '');
-            $meta_id = isset($field['meta_id']) ? $field['meta_id'] : null;
-
-            if ( ! is_null($meta_id))
-                continue;
-
-            $nodes = $xp_struct->query('/record/description/' . $fname);
-
-            if ($nodes->length > 0) {
-                $nodes->item(0)->parentNode->removeChild($nodes->item(0));
-            }
-
-            $type = isset($field['type']) ? $field['type'] : 'string';
-            $type = in_array($type, [
-                databox_field::TYPE_DATE,
-                databox_field::TYPE_NUMBER,
-                databox_field::TYPE_STRING,
-                databox_field::TYPE_TEXT
-            ]) ? $type : databox_field::TYPE_STRING;
-
-            $multi = isset($field['multi']) ? (Boolean) (string) $field['multi'] : false;
-
-            $meta_struct_field = databox_field::create($this->app, $this, $fname, $multi);
-            $meta_struct_field
-                ->set_readonly(isset($field['readonly']) ? (string) $field['readonly'] : 0)
-                ->set_indexable(isset($field['index']) ? (string) $field['index'] : '1')
-                ->set_separator(isset($field['separator']) ? (string) $field['separator'] : '')
-                ->set_required((isset($field['required']) && (string) $field['required'] == 1))
-                ->set_business((isset($field['business']) && (string) $field['business'] == 1))
-                ->set_aggregable((isset($field['aggregable']) ? (string) $field['aggregable'] : 0))
-                ->set_type($type)
-                ->set_tbranch(isset($field['tbranch']) ? (string) $field['tbranch'] : '')
-                ->set_thumbtitle(isset($field['thumbtitle']) ? (string) $field['thumbtitle'] : (isset($field['thumbTitle']) ? (string) $field['thumbTitle'] : '0'))
-                ->set_report(isset($field['report']) ? (string) $field['report'] : '1')
-                ->save();
-
-            try {
-                $meta_struct_field->set_tag(\databox_field::loadClassFromTagName($src))->save();
-            } catch (\Exception $e) {
-            }
-        }
-
-        $this->saveStructure($dom_struct);
-
         return $this;
     }
 
@@ -293,7 +272,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function getRecordRepository()
     {
-        if (null === $this->recordRepository) {
+        if ($this->recordRepository === null) {
             $this->recordRepository = $this->app['repo.records.factory']($this);
         }
 
@@ -309,6 +288,9 @@ class databox extends base implements ThumbnailedElement
         return $this->databox->getDisplayIndex();
     }
 
+    /**
+     * @return int
+     */
     public function getRootIdentifier()
     {
         return $this->databox->getDataboxId();
@@ -343,7 +325,7 @@ class databox extends base implements ThumbnailedElement
                 break;
             case self::CACHE_THESAURUS:
                 $this->thesaurus = null;
-                unset(self::$_dom_thesaurus[$this->database->getDataboxId()]);
+                unset(self::$_dom_thesaurus[$this->databox->getDataboxId()]);
                 break;
             default:
                 break;
@@ -406,7 +388,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_viewname()
     {
-        return $this->databox->getViewName() ?: $this->databox->getDatabase();
+        return $this->databox->getViewName(true);
     }
 
     public function set_viewname($viewname)
@@ -430,8 +412,6 @@ class databox extends base implements ThumbnailedElement
         $this->databox->setLabel($code, $label);
         $this->databoxRepository->save($this->databox);
 
-        phrasea::reset_sbasDatas($this->app['phraseanet.appbox']);
-
         return $this;
     }
 
@@ -448,71 +428,17 @@ class databox extends base implements ThumbnailedElement
 
     public function get_record_details($sort)
     {
-        static $recordDetailsRepository;
-
-        if ($recordDetailsRepository === null) {
-            $recordDetailsRepository = new RecordDetailsRepository($this->connection);
-        }
-
-        return $recordDetailsRepository->getRecordDetails($sort);
+        return $this->recordDetailsRepository->getRecordDetails($sort);
     }
 
     public function get_record_amount()
     {
-        $sql = "SELECT COUNT(record_id) AS n FROM record";
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $rowbas = $stmt->fetch(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        $amount = $rowbas ? (int) $rowbas["n"] : null;
-
-        return $amount;
+        return $this->recordDetailsRepository->getRecordCount();
     }
 
     public function get_counts()
     {
-        $mask = PhraseaTokens::MAKE_SUBDEF | PhraseaTokens::TO_INDEX | PhraseaTokens::INDEXING; // we only care about those "jetons"
-        $sql = "SELECT type, jeton & (".$mask.") AS status, SUM(1) AS n FROM record GROUP BY type, (jeton & ".$mask.")";
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        $ret = array(
-            'records'             => 0,
-            'records_indexed'     => 0,    // jetons = 0;0
-            'records_to_index'    => 0,    // jetons = 0;1
-            'records_not_indexed' => 0,    // jetons = 1;0
-            'records_indexing'    => 0,    // jetons = 1;1
-            'subdefs_todo'        => array()   // by type "image", "video", ...
-        );
-        foreach ($rs as $row) {
-            $ret['records'] += ($n = (int)($row['n']));
-            $status = $row['status'];
-            switch($status & (PhraseaTokens::TO_INDEX | PhraseaTokens::INDEXING)) {
-                case 0:
-                    $ret['records_indexed'] += $n;
-                    break;
-                case PhraseaTokens::TO_INDEX:
-                    $ret['records_to_index'] += $n;
-                    break;
-                case PhraseaTokens::INDEXING:
-                    $ret['records_not_indexed'] += $n;
-                    break;
-                case PhraseaTokens::INDEXING | PhraseaTokens::TO_INDEX:
-                    $ret['records_indexing'] += $n;
-                    break;
-            }
-            if($status & PhraseaTokens::MAKE_SUBDEF) {
-                if(!array_key_exists($row['type'], $ret['subdefs_todo'])) {
-                    $ret['subdefs_todo'][$row['type']] = 0;
-                }
-                $ret['subdefs_todo'][$row['type']] += $n;
-            }
-        }
-
-        return $ret;
+        return $this->recordDetailsRepository->getRecordStatistics();
     }
 
     /**
@@ -524,8 +450,6 @@ class databox extends base implements ThumbnailedElement
         $service = $this->app['databoxes.service'];
 
         $service->unmountDatabox($this);
-
-        return;
     }
 
     public function get_base_type()
@@ -736,27 +660,9 @@ class databox extends base implements ThumbnailedElement
      */
     public function get_thesaurus()
     {
-        try {
-            $this->thesaurus = $this->get_data_from_cache(self::CACHE_THESAURUS);
+        $preference = $this->preferencesRepository->findFirstByProperty('thesaurus');
 
-            return $this->thesaurus;
-        } catch (\Exception $e) {
-            unset($e);
-        }
-
-        try {
-            $sql = 'SELECT value AS thesaurus FROM pref WHERE prop="thesaurus" LIMIT 1;';
-            $stmt = $this->get_connection()->prepare($sql);
-            $stmt->execute();
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stmt->closeCursor();
-            $this->thesaurus = $row['thesaurus'];
-            $this->set_data_to_cache($this->thesaurus, self::CACHE_THESAURUS);
-        } catch (\Exception $e) {
-            unset($e);
-        }
-
-        return $this->thesaurus;
+        return $preference->getValue();
     }
 
     /**
@@ -897,16 +803,10 @@ class databox extends base implements ThumbnailedElement
         $stmt->execute([':terms'    => $terms, ':locale'   => $locale]);
         $stmt->closeCursor();
         $this->cgus = null;
-        $this->delete_data_from_cache(self::CACHE_CGUS);
 
         $this->app['dispatcher']->dispatch(
             DataboxEvents::TOU_CHANGED,
-            new TouChangedEvent(
-                $this,
-                array(
-                    'tou_before'=>$old_tou,
-                )
-            )
+            new TouChangedEvent($this, [ 'tou_before' => $old_tou ])
         );
 
         return $this;
@@ -914,19 +814,15 @@ class databox extends base implements ThumbnailedElement
 
     public function get_cgus()
     {
-        if ($this->cgus) {
-            return $this->cgus;
+        if (! $this->cgus) {
+            $this->load_cgus();
         }
-
-        $this->load_cgus();
 
         return $this->cgus;
     }
 
     public function __sleep()
     {
-        $this->_sxml_structure = $this->_dom_structure = $this->_xpath_structure = null;
-
         $vars = [];
 
         foreach ($this as $key => $value) {
@@ -941,25 +837,17 @@ class databox extends base implements ThumbnailedElement
     }
 
     /**
-     * Tells whether the registration is enable or not.
+     * Tells whether registration is enabled or not.
      *
      * @return boolean
      */
     public function isRegistrationEnabled()
     {
-        if (false !== $xml = $this->getStructure()->getSimpleXmlElement()) {
-            foreach ($xml->xpath('/record/caninscript') as $canRegister) {
-                if (false !== (bool) (string) $canRegister) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $this->getStructure()->isRegistrationEnabled();
     }
 
     /**
-     * Return an array that can be used to restore databox.
+     * Returns an array that can be used to restore databox.
      *
      * @return array
      */
@@ -984,73 +872,24 @@ class databox extends base implements ThumbnailedElement
 
     protected function retrieve_structure()
     {
-        $structure = null;
+        $structure = '';
+        $preference = $this->preferencesRepository->findFirstByProperty('structure');
 
-        $sql = "SELECT value FROM pref WHERE prop='structure'";
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        if ($row)
-            $structure = $row['value'];
+        if ($preference) {
+            $structure = $preference->getValue();
+        }
 
         return new Structure($structure);
     }
 
     protected function load_cgus()
     {
-        try {
-            $this->cgus = $this->get_data_from_cache(self::CACHE_CGUS);
-
-            return $this;
-        } catch (\Exception $e) {
-
-        }
-
-        $sql = 'SELECT value, locale, updated_on FROM pref WHERE prop ="ToU"';
-        $stmt = $this->get_connection()->prepare($sql);
-        $stmt->execute();
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        $TOU = [];
-
-        foreach ($rs as $row) {
-            $TOU[$row['locale']] = ['updated_on' => $row['updated_on'], 'value' => $row['value']];
-        }
-
-        $missing_locale = [];
-
-        $avLanguages = $this->app['locales.available'];
-        foreach ($avLanguages as $code => $language) {
-            if (!isset($TOU[$code])) {
-                $missing_locale[] = $code;
-            }
-        }
-
-        $TOU = array_intersect_key($TOU, $avLanguages);
-
-        $date_obj = new DateTime();
-        $date = $this->app['date-formatter']->format_mysql($date_obj);
-        $sql = "INSERT INTO pref (id, prop, value, locale, updated_on, created_on)
-              VALUES (null, 'ToU', '', :locale, :date, NOW())";
-        $stmt = $this->get_connection()->prepare($sql);
-        foreach ($missing_locale as $v) {
-            $stmt->execute([':locale' => $v, ':date' => $date]);
-            $TOU[$v] = ['updated_on' => $date, 'value' => ''];
-        }
-        $stmt->closeCursor();
-        $this->cgus = $TOU;
-
-        $this->set_data_to_cache($TOU, self::CACHE_CGUS);
-
-        return $this;
+        $this->cgus = $this->termsOfUseRepository->getTermsOfUse();
     }
 
     private function loadStructure()
     {
-        if ($this->structure === null) {
+        if (! $this->structure) {
             $this->structure = $this->retrieve_structure();
         }
     }

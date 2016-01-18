@@ -129,4 +129,19 @@ class Structure
             ->documentElement
             ->getAttribute("modification_date");
     }
+
+    public function isRegistrationEnabled()
+    {
+        if (! $this->getSimpleXmlElement()) {
+            return false;
+        }
+
+        foreach ($this->getSimpleXmlElement()->xpath('/record/caninscript') as $canRegister) {
+            if ((bool) ((string) $canRegister)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

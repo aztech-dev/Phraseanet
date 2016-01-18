@@ -17,6 +17,9 @@ use Alchemy\Phrasea\Databox\Process\Delete;
 use Alchemy\Phrasea\Databox\Process\DataboxProcessRegistry;
 use Alchemy\Phrasea\Databox\Process\Reindex\ReindexStep;
 use Alchemy\Phrasea\Databox\Process\ReplaceStructure\ReplaceStructureStep;
+use Alchemy\Phrasea\Databox\Process\SetStructure\BuildStructureStep;
+use Alchemy\Phrasea\Databox\Process\SetStructure\FeedMetaFieldsStep;
+use Alchemy\Phrasea\Databox\Process\SetStructure\SetStructureStep;
 use Alchemy\Phrasea\Databox\Process\StepRegistry;
 use Alchemy\Phrasea\Databox\Process\Mount;
 use Alchemy\Phrasea\Databox\Process\Unmount;
@@ -69,10 +72,11 @@ class DataboxServiceProvider implements ServiceProviderInterface
             $processRegistry->registerProcess(Unmount\UnmountStep::class, $this->buildUnmountStepRegistry($app));
             $processRegistry->registerProcess(Delete\DeleteStep::class, $this->buildDeleteStepRegistry($app));
             $processRegistry->registerProcess(AddAdmin\AddAdminStep::class, $this->buildAddAdminStepRegistry($app));
-            $processRegistry->registerProcess(ReindexStep::class, $this->buildReindexStepRegistry($app));
+            $processRegistry->registerProcess(ReindexStep::class, $this->buildReindexStepRegistry());
+            $processRegistry->registerProcess(SetStructureStep::class, $this->buildSetStructureStepRegistry($app));
             $processRegistry->registerProcess(
                 ReplaceStructureStep::class,
-                $this->buildReplaceStructureStepRegistry($app)
+                $this->buildReplaceStructureStepRegistry()
             );
 
             return new DataboxService(
@@ -198,7 +202,7 @@ class DataboxServiceProvider implements ServiceProviderInterface
         return $registry;
     }
 
-    private function buildReindexStepRegistry(PhraseaApplication $app)
+    private function buildReindexStepRegistry()
     {
         $registry = new StepRegistry();
 
@@ -209,7 +213,22 @@ class DataboxServiceProvider implements ServiceProviderInterface
         return $registry;
     }
 
-    private function buildReplaceStructureStepRegistry(PhraseaApplication $app)
+    private function buildSetStructureStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () use ($app) {
+            return new BuildStructureStep($app['databoxes.service']);
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new FeedMetaFieldsStep($app, $app['databoxes.service']);
+        });
+
+        return $registry;
+    }
+
+    private function buildReplaceStructureStepRegistry()
     {
         $registry = new StepRegistry();
 

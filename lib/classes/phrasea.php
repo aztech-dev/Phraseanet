@@ -20,22 +20,6 @@ use Symfony\Component\Translation\TranslatorInterface;
  */
 class phrasea
 {
-    private static $_bas2sbas = false;
-    private static $_sbas_names = false;
-    private static $_sbas_labels = false;
-    private static $_coll2bas = false;
-    private static $_bas2coll = false;
-    private static $_bas_labels = false;
-    private static $_sbas_params = false;
-
-    const CACHE_BAS_2_SBAS = 'bas_2_sbas';
-    const CACHE_COLL_2_BAS = 'coll_2_bas';
-    const CACHE_BAS_2_COLL = 'bas_2_coll';
-    const CACHE_BAS_LABELS = 'bas_labels';
-    const CACHE_SBAS_NAMES = 'sbas_names';
-    const CACHE_SBAS_LABELS = 'sbas_labels';
-    const CACHE_SBAS_FROM_BAS = 'sbas_from_bas';
-    const CACHE_SBAS_PARAMS = 'sbas_params';
 
     /**
      * @param Application $app
@@ -131,7 +115,7 @@ class phrasea
      */
     public static function reset_baseDatas()
     {
-        self::$_coll2bas = self::$_bas2coll = self::$_bas_labels = self::$_bas2sbas = null;
+
     }
 
     /**
@@ -139,7 +123,7 @@ class phrasea
      */
     public static function reset_sbasDatas()
     {
-        self::$_sbas_names = self::$_sbas_labels = self::$_sbas_params = self::$_bas2sbas = null;
+
     }
 
     /**

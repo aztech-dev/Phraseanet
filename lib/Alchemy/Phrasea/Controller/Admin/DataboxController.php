@@ -245,7 +245,7 @@ class DataboxController extends Controller
 
         try {
             foreach ($request->request->get('TOU', []) as $loc => $terms) {
-                $databox->update_cgus($loc, $terms, !!$request->request->get('valid', false));
+                $databox->update_cgus($loc, $terms, (bool) $request->request->get('valid', false));
             }
         } catch (\Exception $e) {
             return $this->app->redirectPath('admin_database_display_cgus', [
@@ -272,6 +272,7 @@ class DataboxController extends Controller
     {
         $connection = $this->getApplicationBox()->get_connection();
         $connection->beginTransaction();
+
         try {
             /** @var Authenticator $authenticator */
             $authenticator = $this->app->getAuthenticator();

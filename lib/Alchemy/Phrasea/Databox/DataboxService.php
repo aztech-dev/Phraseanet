@@ -15,6 +15,7 @@ use Alchemy\Phrasea\Databox\Process\Mount\AbstractMountStep;
 use Alchemy\Phrasea\Databox\Process\Mount\MountStep;
 use Alchemy\Phrasea\Databox\Process\Reindex\ReindexStep;
 use Alchemy\Phrasea\Databox\Process\ReplaceStructure\ReplaceStructureStep;
+use Alchemy\Phrasea\Databox\Process\SetStructure\SetStructureStep;
 use Alchemy\Phrasea\Databox\Process\Unmount\UnmountStep;
 use Alchemy\Phrasea\Exception\RuntimeException;
 use Alchemy\Phrasea\Model\Entities\User;
@@ -187,17 +188,29 @@ class DataboxService
 
     /**
      * @param \databox $databox
+     * @param \SplFileInfo $dataTemplate
+     * @param $documentPath
+     */
+    public function setDataboxStructure(\databox $databox, \SplFileInfo $dataTemplate, $documentPath)
+    {
+        foreach ($this->processRegistry->getProcessSteps(SetStructureStep::class) as $step) {
+            /** @var SetStructureStep $step */
+            $step->execute($databox, $dataTemplate, $documentPath);
+        }
+    }
+
+    /**
+     * @param \databox $databox
      * @param \DOMDocument $structureDom
      */
     public function replaceDataboxStructure(\databox $databox, \DOMDocument $structureDom)
     {
         $previousStructure = $databox->getStructure();;
-        $databoxConnection = $databox->get_connection();
         $databoxVO = $databox->getDataObject();
 
         foreach ($this->processRegistry->getProcessSteps(ReplaceStructureStep::class) as $step) {
             /** @var ReplaceStructureStep $step */
-            $step->execute($databoxConnection, $databoxVO, $structureDom);
+            $step->execute($databox->getPreferenceRepository(), $databoxVO, $structureDom);
         }
 
         $databox->delete_data_from_cache(\databox::CACHE_STRUCTURE);

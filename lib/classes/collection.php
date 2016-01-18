@@ -317,6 +317,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->app = $app;
         $this->databox = $app->getApplicationBox()->get_databox($this->reference->getDataboxId());
         $this->collectionService = $app->getApplicationBox()->getCollectionService();
+        $this->collectionRepositoryRegistry = $app['repo.collections-registry'];
     }
 
     public function __sleep()
