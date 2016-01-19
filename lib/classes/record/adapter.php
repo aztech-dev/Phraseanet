@@ -984,26 +984,6 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
     }
 
     /**
-     * @param  DOMDocument    $dom_doc
-     * @return record_adapter
-     */
-    protected function set_xml(DOMDocument $dom_doc)
-    {
-        $connbas = $this->getDatabox()->get_connection();
-        $sql = 'UPDATE record SET xml = :xml WHERE record_id= :record_id';
-        $stmt = $connbas->prepare($sql);
-        $stmt->execute(
-            [
-                ':xml'       => $dom_doc->saveXML(),
-                ':record_id' => $this->record_id
-            ]
-        );
-        $stmt->closeCursor();
-
-        return $this;
-    }
-
-    /**
      * @todo move this function to caption_record
      * @param  Array  $params An array containing three keys : meta_struct_id (int) , meta_id (int or null) and value (Array)
      * @param databox $databox
@@ -1088,12 +1068,6 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
             $this->set_metadata($param, $this->databox);
         }
 
-        $xml = new DOMDocument();
-        $xml->loadXML($this->app['serializer.caption']->serialize($this->get_caption(), CaptionSerializer::SERIALIZE_XML, true));
-
-        $this->set_xml($xml);
-        unset($xml);
-
         $this->dispatch(RecordEvents::METADATA_CHANGED, new MetadataChangedEvent($this));
 
         return $this;
@@ -1110,7 +1084,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         $stmt = $connbas->prepare($sql);
         $stmt->execute([
             ':record_id' => $this->getRecordId(),
-            'make_subdef_mask' => PhraseaTokens::MAKE_SUBDEF,
+            ':make_subdef_mask' => PhraseaTokens::MAKE_SUBDEF,
         ]);
         $stmt->closeCursor();
 

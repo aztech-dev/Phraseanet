@@ -27,14 +27,21 @@ class CreateConfigurationStep implements Step
      */
     private $randomGenerator;
 
+    /**
+     * @var string
+     */
+    private $rootPath;
+
     public function __construct(
         HostConfiguration $hostConfiguration,
         RegistryManipulator $registryManipulator,
-        Generator $randomGenerator
+        Generator $randomGenerator,
+        $rootPath
     ) {
         $this->hostConfiguration = $hostConfiguration;
         $this->registryManipulator = $registryManipulator;
         $this->randomGenerator = $randomGenerator;
+        $this->rootPath = $rootPath;
     }
 
     public function getName()
@@ -61,11 +68,11 @@ class CreateConfigurationStep implements Step
         $config['main']['database'] = $appboxConnection->getParams();
 
         $config['main']['storage'] = [
-            'cache' => realpath(__DIR__ . '/../../../../cache'),
-            'log' => realpath(__DIR__ . '/../../../../logs'),
-            'download' => realpath(__DIR__ . '/../../../../tmp/download'),
-            'lazaret' => realpath(__DIR__ . '/../../../../tmp/lazaret'),
-            'caption' => realpath(__DIR__ . '/../../../../tmp/caption'),
+            'cache' => realpath($this->rootPath . '/cache'),
+            'log' => realpath($this->rootPath .  '/logs'),
+            'download' => realpath($this->rootPath . '/tmp/download'),
+            'lazaret' => realpath($this->rootPath . '/tmp/lazaret'),
+            'caption' => realpath($this->rootPath . '/tmp/caption'),
             'subdefs' => $dataPath
         ];
 
