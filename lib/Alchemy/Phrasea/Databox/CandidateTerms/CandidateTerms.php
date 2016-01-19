@@ -2,7 +2,9 @@
 
 namespace Alchemy\Phrasea\Databox\CandidateTerms;
 
-class CandidateTerms 
+use Alchemy\Phrasea\Databox\Util\XmlHelper;
+
+class CandidateTerms
 {
     public static function createFromDomDocument(\DOMDocument $candidateTermsDom)
     {
@@ -14,51 +16,24 @@ class CandidateTerms
     }
 
     /**
-     * @var string
+     * @var XmlHelper
      */
-    private $rawTerms;
+    private $xmlHelper;
 
     /**
-     * @var \SimpleXMLElement|false|null
+     * @param string $rawTerms
      */
-    private $simpleXmlElement = null;
-
-    /**
-     * @var \DOMDocument|false|null
-     */
-    private $domDocument = null;
-
-    /**
-     * @var \DOMXpath|false|null
-     */
-    private $domXpath = null;
-
     public function __construct($rawTerms = '')
     {
-        $this->rawTerms = (string) $rawTerms;
-
-        $this->initializeObjects();
-    }
-
-    private function initializeObjects()
-    {
-        $this->simpleXmlElement = null;
-        $this->domDocument = null;
-        $this->domXpath = null;
-
-        if (trim($this->rawTerms) == '') {
-            $this->simpleXmlElement = false;
-            $this->domDocument = false;
-            $this->domXpath = false;
-        }
+        $this->xmlHelper = new XmlHelper($rawTerms);
     }
 
     /**
      * @return string
      */
-    public function getRawTerms()
+    public function getRawThesaurus()
     {
-        return $this->rawTerms;
+        return $this->xmlHelper->getRawXml();
     }
 
     /**
@@ -66,11 +41,7 @@ class CandidateTerms
      */
     public function getSimpleXmlElement()
     {
-        if ($this->simpleXmlElement === null) {
-            $this->simpleXmlElement = simplexml_load_string($this->rawTerms);
-        }
-
-        return $this->simpleXmlElement;
+        return $this->xmlHelper->getSimpleXmlElement();
     }
 
     /**
@@ -78,21 +49,7 @@ class CandidateTerms
      */
     public function getDomDocument()
     {
-        if ($this->domDocument === null) {
-            $dom = new \DOMDocument();
-
-            $dom->standalone = true;
-            $dom->preserveWhiteSpace = false;
-            $dom->formatOutput = true;
-
-            $this->domDocument = false;
-
-            if ($dom->loadXML($this->rawTerms) !== false) {
-                $this->domDocument = $dom;
-            }
-        }
-
-        return $this->domDocument;
+        return $this->xmlHelper->getDomDocument();
     }
 
     /**
@@ -100,15 +57,7 @@ class CandidateTerms
      */
     public function getDomXpath()
     {
-        if ($this->domXpath === null) {
-            $this->domXpath = false;
-
-            if ($this->getDomDocument() !== false) {
-                $this->domXpath = new \DOMXPath($this->getDomDocument());
-            }
-        }
-
-        return $this->domXpath;
+        return $this->getDomXpath();
     }
 
 }

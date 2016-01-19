@@ -2,7 +2,9 @@
 
 namespace Alchemy\Phrasea\Databox\Structure;
 
-class Structure 
+use Alchemy\Phrasea\Databox\Util\XmlHelper;
+
+class Structure
 {
 
     public static function createFromDomDocument(\DOMDocument $structureDocument)
@@ -15,58 +17,16 @@ class Structure
     }
 
     /**
-     * @var string
+     * @var XmlHelper
      */
-    private $rawStructure;
-
-    /**
-     * @var \SimpleXMLElement|false|null
-     */
-    private $simpleXmlElement = null;
-
-    /**
-     * @var \DOMDocument|false|null
-     */
-    private $domDocument = null;
-
-    /**
-     * @var \DOMXpath|false|null
-     */
-    private $domXpath = null;
+    private $xmlHelper;
 
     /**
      * @param string $rawStructure
      */
-    public function __construct($rawStructure)
+    public function __construct($rawStructure = '')
     {
-        $this->rawStructure = (string) $rawStructure;
-
-        $this->initializeObjects();
-    }
-
-    public function __sleep()
-    {
-        return [
-            'rawStructure'
-        ];
-    }
-
-    public function __wakeup()
-    {
-        $this->initializeObjects();
-    }
-
-    private function initializeObjects()
-    {
-        $this->simpleXmlElement = null;
-        $this->domDocument = null;
-        $this->domXpath = null;
-
-        if (trim($this->rawStructure) == '') {
-            $this->simpleXmlElement = false;
-            $this->domDocument = false;
-            $this->domXpath = false;
-        }
+        $this->xmlHelper = new XmlHelper($rawStructure);
     }
 
     /**
@@ -74,7 +34,7 @@ class Structure
      */
     public function getRawStructure()
     {
-        return $this->rawStructure;
+        return $this->xmlHelper->getRawXml();
     }
 
     /**
@@ -82,11 +42,7 @@ class Structure
      */
     public function getSimpleXmlElement()
     {
-        if ($this->simpleXmlElement === null) {
-            $this->simpleXmlElement = simplexml_load_string($this->rawStructure);
-        }
-
-        return $this->simpleXmlElement;
+        return $this->xmlHelper->getSimpleXmlElement();
     }
 
     /**
@@ -94,21 +50,7 @@ class Structure
      */
     public function getDomDocument()
     {
-        if ($this->domDocument === null) {
-            $dom = new \DOMDocument();
-
-            $dom->standalone = true;
-            $dom->preserveWhiteSpace = false;
-            $dom->formatOutput = true;
-
-            $this->domDocument = false;
-
-            if ($dom->loadXML($this->rawStructure) !== false) {
-                $this->domDocument = $dom;
-            }
-        }
-
-        return $this->domDocument;
+        return $this->xmlHelper->getDomDocument();
     }
 
     /**
@@ -116,15 +58,7 @@ class Structure
      */
     public function getDomXpath()
     {
-        if ($this->domXpath === null) {
-            $this->domXpath = false;
-
-            if ($this->getDomDocument() !== false) {
-                $this->domXpath = new \DOMXPath($this->getDomDocument());
-            }
-        }
-
-        return $this->domXpath;
+        return $this->xmlHelper->getDomXpath();
     }
 
     public function getModificationDate()
