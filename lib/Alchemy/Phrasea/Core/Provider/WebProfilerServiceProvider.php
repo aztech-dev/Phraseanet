@@ -47,7 +47,7 @@ class WebProfilerServiceProvider implements ServiceProviderInterface
                 return $templates;
             }));
 
-            $app['data_collectors'] = $app->share($app->extend('data_collectors', function ($collectors) use ($app) {
+            $app['data_collectors'] = $app->share($app->extend('data_collectors', function ($collectors) {
                 $collectors['ajax'] = function () {
                     return new AjaxDataCollector();
                 };

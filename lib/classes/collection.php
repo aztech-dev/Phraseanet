@@ -736,7 +736,7 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->getReferenceRepository()->delete($this->reference);
 
         $this->app['manipulator.registration']->deleteRegistrationsOnCollection($this);
-        $this->app['repo.collections-registry']->purgeRegistry();
+        $this->collectionRepositoryRegistry->purgeRegistry();
 
         $this->dispatch(
             CollectionEvents::UNMOUNTED,
