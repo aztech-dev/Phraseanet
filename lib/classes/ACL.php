@@ -820,15 +820,6 @@ class ACL implements cache_cacheableInterface
             return $this;
         }
 
-        try {
-            $tmp_rights = $this->get_data_from_cache(self::CACHE_RIGHTS_RECORDS);
-            $this->_rights_records_preview = $tmp_rights['preview'];
-            $this->_rights_records_document = $tmp_rights['document'];
-
-            return $this;
-        } catch (\Exception $e) {
-
-        }
         $sql = 'SELECT sbas_id, record_id, preview, document
             FROM records_rights WHERE usr_id = :usr_id';
 
@@ -853,8 +844,6 @@ class ACL implements cache_cacheableInterface
             , 'document' => $this->_rights_records_document
         ];
 
-        $this->set_data_to_cache($datas, self::CACHE_RIGHTS_RECORDS);
-
         return $this;
     }
 
@@ -868,24 +857,6 @@ class ACL implements cache_cacheableInterface
 
         if ($this->_rights_sbas && $this->_global_rights) {
             return $this;
-        }
-
-        try {
-            $global_rights = $this->get_data_from_cache(self::CACHE_GLOBAL_RIGHTS);
-            if (!is_array($global_rights)) {
-                throw new Exception('global rights were not properly retrieved');
-            }
-            $sbas_rights = $this->get_data_from_cache(self::CACHE_RIGHTS_SBAS);
-            if (!is_array($sbas_rights)) {
-                throw new Exception('sbas rights were not properly retrieved');
-            }
-
-            $this->_global_rights = $global_rights;
-            $this->_rights_sbas = $sbas_rights;
-
-            return $this;
-        } catch (\Exception $e) {
-
         }
 
         $sql = 'SELECT sbasusr.* FROM sbasusr, sbas
@@ -905,7 +876,6 @@ class ACL implements cache_cacheableInterface
         $this->_global_rights['bas_chupub'] = false;
 
         foreach ($rs as $row) {
-
             if ($row['bas_modif_th'] == '1')
                 $this->_global_rights['bas_modif_th'] = true;
             if ($row['bas_modify_struct'] == '1')
@@ -920,6 +890,7 @@ class ACL implements cache_cacheableInterface
             $this->_rights_sbas[$row['sbas_id']]['bas_chupub'] = ($row['bas_chupub'] == '1');
             $this->_rights_sbas[$row['sbas_id']]['bas_modif_th'] = ($row['bas_modif_th'] == '1');
         }
+
         $this->set_data_to_cache($this->_rights_sbas, self::CACHE_RIGHTS_SBAS);
         $this->set_data_to_cache($this->_global_rights, self::CACHE_GLOBAL_RIGHTS);
 
@@ -935,27 +906,6 @@ class ACL implements cache_cacheableInterface
     {
         if ($this->_rights_bas && $this->_global_rights && is_array($this->_limited)) {
             return $this;
-        }
-
-        try {
-            $data = $this->get_data_from_cache(self::CACHE_GLOBAL_RIGHTS);
-            if (!is_array($data)) {
-                throw new Exception('Unable to retrieve global rights');
-            }
-            $this->_global_rights = $data;
-            $data = $this->get_data_from_cache(self::CACHE_RIGHTS_BAS);
-            if (!is_array($data)) {
-                throw new Exception('Unable to retrieve base rights');
-            }
-            $this->_rights_bas = $data;
-            $data = $this->get_data_from_cache(self::CACHE_LIMITS_BAS);
-            if (!is_array($data)) {
-                throw new Exception('Unable to retrieve limits rights');
-            }
-            $this->_limited = $data;
-
-            return $this;
-        } catch (\Exception $e) {
         }
 
         $sql = 'SELECT  u.* FROM basusr u, bas b, sbas s
@@ -1666,13 +1616,13 @@ class ACL implements cache_cacheableInterface
             while (strlen($datas[$name]) > 0) {
                 $valtmp = substr($datas[$name], 0, 4);
                 $datas[$name] = substr($datas[$name], 4);
-                $vhex[$name] .= bindec($valtmp);
+                $vhex[$name] .= dechex(bindec($valtmp));
             }
         }
 
         $sql = "UPDATE basusr
-        SET mask_and=((mask_and & " . hexdec($vhex['and_and']) . ") | " . hexdec($vhex['and_or']) . ")
-          ,mask_xor=((mask_xor & " . hexdec($vhex['xor_and']) . ") | " . hexdec($vhex['xor_or']) . ")
+        SET mask_and=((mask_and & " . $vhex['and_and'] . ") | " . $vhex['and_or'] . ")
+          ,mask_xor=((mask_xor & " . $vhex['xor_and'] . ") | " . $vhex['xor_or'] . ")
         WHERE usr_id = :usr_id and base_id = :base_id";
 
         $stmt = $this->app->getApplicationBox()->get_connection()->prepare($sql);

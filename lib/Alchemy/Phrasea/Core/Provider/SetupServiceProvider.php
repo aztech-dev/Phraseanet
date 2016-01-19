@@ -62,7 +62,9 @@ class SetupServiceProvider implements ServiceProviderInterface
             return new CreateConfigurationStep(
                 $app['configuration.store'],
                 $app['registry.manipulator'],
-                $app['random.medium']);
+                $app['random.medium'],
+                $app['root.path']
+            );
         });
 
         $registry->addStepFactory(function () use ($app) {
