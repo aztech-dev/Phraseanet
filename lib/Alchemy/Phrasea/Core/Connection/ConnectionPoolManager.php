@@ -67,9 +67,11 @@ class ConnectionPoolManager
     public function add(Connection $connection)
     {
         $key = md5(serialize($connection->getParams()));
+
         if (isset($this->connections[$key]) && $connection !== $this->connections[$key]) {
             throw new \InvalidArgumentException('Expects a non registered connection.');
         }
+
         $this->connections[$key] = $connection;
     }
 
@@ -82,10 +84,10 @@ class ConnectionPoolManager
 
         $key = md5(serialize($params));
 
-        if (isset($this->connections[$key])) {
-            return $this->connections[$key];
+        if (! isset($this->connections[$key])) {
+            $this->connections[$key] = DriverManager::getConnection($params);
         }
 
-        return $this->connections[$key] = DriverManager::getConnection($params);
+        return $this->connections[$key];
     }
 }

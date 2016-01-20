@@ -9,9 +9,11 @@ class SetCurrentDatabaseStep extends AbstractCreateStep
 
     public function execute(Connection $connection, \SplFileInfo $dataTemplate)
     {
-        $sql = 'USE `' . $connection->getDatabase() . '`';
-        $stmt = $connection->prepare($sql);
-        $stmt->execute();
+        if ($connection->getDriver()->getName() == 'pdo_mysql') {
+            $sql = 'USE `' . $connection->getDatabase() . '`';
+            $stmt = $connection->prepare($sql);
+            $stmt->execute();
+        }
 
         return $this->runNext($connection, $dataTemplate);
     }

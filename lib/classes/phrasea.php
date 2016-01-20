@@ -186,7 +186,7 @@ class phrasea
         return $app->getApplicationBox()
             ->get_databox($sbas_id)
             ->getDataObject()
-            ->getLabels();
+            ->getLabel($app['locale']);
     }
 
     /**

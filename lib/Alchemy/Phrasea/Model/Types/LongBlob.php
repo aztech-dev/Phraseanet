@@ -25,6 +25,10 @@ class LongBlob extends Type
 
     public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
     {
-        return $platform->getDoctrineTypeMapping('LONGBLOB');
+        if ($platform->hasDoctrineTypeMappingFor('LONGBLOB')) {
+            return $platform->getDoctrineTypeMapping('LONGBLOB');
+        }
+
+        return $platform->getDoctrineTypeMapping('BLOB');
     }
 }

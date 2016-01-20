@@ -3,6 +3,7 @@
 namespace Alchemy\Phrasea\Core\Database;
 
 use Alchemy\Phrasea\Application;
+use Alchemy\Phrasea\Core\Connection\ConnectionPoolManager;
 use Alchemy\Phrasea\Setup\DoctrineMigrations\AbstractMigration;
 use Doctrine\DBAL\Connection;
 use vierbergenlars\SemVer\version;
@@ -58,10 +59,22 @@ class DatabaseMaintenanceService
 
     private $connection;
 
-    public function __construct(Application $application, Connection $connection)
-    {
+    /**
+     * @var ConnectionPoolManager
+     */
+    private $connectionPool;
+
+    private $tableBuilderFactory;
+
+    public function __construct(
+        Application $application,
+        Connection $connection,
+        TableBuilderFactory $tableBuilderFactory
+    ) {
         $this->app = $application;
+        $this->connectionPool = $application['dbal.connection_pool'];
         $this->connection = $connection;
+        $this->tableBuilderFactory = $tableBuilderFactory;
     }
 
     public function upgradeDatabase(\base $base, $applyPatches)
@@ -145,127 +158,9 @@ class DatabaseMaintenanceService
      */
     public function createTable(\SimpleXMLElement $table)
     {
-        $field_stmt = $defaults_stmt = [];
+        $tableBuilder = $this->tableBuilderFactory->getTableBuilder($this->connection);
 
-        $create_stmt = "CREATE TABLE IF NOT EXISTS `" . $table['name'] . "` (";
-
-        foreach ($table->fields->field as $field) {
-            $isnull = trim($field->null) == "" ? "NOT NULL" : "NULL";
-
-            if (trim($field->default) != "" && trim($field->default) != "CURRENT_TIMESTAMP") {
-                $is_default = " default '" . $field->default . "'";
-            } elseif (trim($field->default) == "CURRENT_TIMESTAMP") {
-                $is_default = " default " . $field->default;
-            } else {
-                $is_default = '';
-            }
-
-            $character_set = '';
-            if (in_array(strtolower((string)$field->type), ['text', 'longtext', 'mediumtext', 'tinytext'])
-                || substr(strtolower((string)$field->type), 0, 7) == 'varchar'
-                || in_array(substr(strtolower((string)$field->type), 0, 4), ['char', 'enum'])
-            ) {
-
-                $collation = trim((string)$field->collation) != '' ? trim((string)$field->collation) : 'utf8_unicode_ci';
-
-                $collations = array_reverse(explode('_', $collation));
-                $code = array_pop($collations);
-
-                $character_set = ' CHARACTER SET ' . $code . ' COLLATE ' . $collation;
-            }
-
-            $field_stmt[] = " `" . $field->name . "` " . $field->type . " "
-                . $field->extra . " " . $character_set . " "
-                . $is_default . " " . $isnull . "";
-        }
-
-        if ($table->indexes) {
-            foreach ($table->indexes->index as $index) {
-                switch ($index->type) {
-                    case "PRIMARY":
-                        $primary_fields = [];
-
-                        foreach ($index->fields->field as $field) {
-                            $primary_fields[] = "`" . $field . "`";
-                        }
-
-                        $field_stmt[] = 'PRIMARY KEY (' . implode(',', $primary_fields) . ')';
-                        break;
-                    case "UNIQUE":
-                        $unique_fields = [];
-
-                        foreach ($index->fields->field as $field) {
-                            $unique_fields[] = "`" . $field . "`";
-                        }
-
-                        $field_stmt[] = 'UNIQUE KEY `' . $index->name . '` (' . implode(',', $unique_fields) . ')';
-                        break;
-                    case "INDEX":
-                        $index_fields = [];
-
-                        foreach ($index->fields->field as $field) {
-                            $index_fields[] = "`" . $field . "`";
-                        }
-
-                        $field_stmt[] = 'KEY `' . $index->name . '` (' . implode(',', $index_fields) . ')';
-                        break;
-                }
-            }
-        }
-
-        if ($table->defaults) {
-            foreach ($table->defaults->default as $default) {
-                $params = $dates_values = [];
-                $nonce = $this->app['random.medium']->generateString(16);
-
-                foreach ($default->data as $data) {
-                    $k = trim($data['key']);
-
-                    if ($k === 'usr_password') {
-                        $data = $this->app['auth.password-encoder']->encodePassword($data, $nonce);
-                    }
-
-                    if ($k === 'nonce') {
-                        $data = $nonce;
-                    }
-
-                    $v = trim(str_replace(["\r\n", "\r", "\n", "\t"], '', $data));
-
-                    if (trim(mb_strtolower($v)) == 'now()') {
-                        $dates_values [$k] = 'NOW()';
-                    } else {
-                        $params[$k] = (trim(mb_strtolower($v)) == 'null' ? null : $v);
-                    }
-                }
-
-                $separator = ((count($params) > 0 && count($dates_values) > 0) ? ', ' : '');
-
-                $defaults_stmt[] = [
-                    'sql' =>
-                        'INSERT INTO `' . $table['name'] . '` (' . implode(', ', array_keys($params))
-                        . $separator . implode(', ', array_keys($dates_values)) . ')
-                      VALUES (:' . implode(', :', array_keys($params))
-                        . $separator . implode(', ', array_values($dates_values)) . ') '
-                    ,
-                    'params' => $params
-                ];
-            }
-        }
-
-        $engine = mb_strtolower(trim($table->engine));
-        $engine = in_array($engine, ['innodb', 'myisam']) ? $engine : 'innodb';
-
-        $create_stmt .= implode(',', $field_stmt);
-        $create_stmt .= ") ENGINE=" . $engine . " CHARACTER SET utf8 COLLATE utf8_unicode_ci;";
-
-        $this->connection->exec($create_stmt);
-
-        foreach ($defaults_stmt as $def) {
-            $stmt = $this->connection->prepare($def['sql']);
-            $stmt->execute($def['params']);
-        }
-
-        unset($stmt);
+        $tableBuilder->buildTable($this->connection, $table);
     }
 
     public function upgradeTable(\SimpleXMLElement $table)

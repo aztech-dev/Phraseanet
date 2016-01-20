@@ -24,7 +24,7 @@ class FilesystemProbe extends FilesystemRequirements implements ProbeInterface
         $baseDir = realpath(__DIR__ . '/../../../../../');
 
         $paths = [
-            $baseDir . '/config/configuration.yml',
+            $baseDir . '/config/configuration.prod.yml',
         ];
 
         foreach ($paths as $path) {

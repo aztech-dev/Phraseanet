@@ -39,7 +39,7 @@ class Structure
      */
     public function __construct($rawStructure)
     {
-        $this->rawStructure = $rawStructure;
+        $this->rawStructure = (string) $rawStructure;
 
         if (trim($this->rawStructure) == '') {
             $this->simpleXmlElement = false;

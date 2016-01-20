@@ -46,6 +46,8 @@ class CreateApplicationBoxStep implements Step
             $tool->createSchema($metadata);
         }
 
+        $this->application->getApplicationBox()->get_connection()->close();
+        $this->application->getApplicationBox()->get_connection()->connect();
         $this->application->getApplicationBox()->insert_datas();
     }
 }

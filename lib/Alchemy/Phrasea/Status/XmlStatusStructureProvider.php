@@ -32,8 +32,8 @@ class XmlStatusStructureProvider implements StatusStructureProviderInterface
     {
         $statusStructure = new StatusStructure($databox);
 
-        $xmlPref = $databox->get_structure();
-        $sxe = simplexml_load_string($xmlPref);
+        $xmlPref = $databox->getStructure();
+        $sxe = $xmlPref->getSimpleXmlElement();
 
         if ($sxe === false) {
             throw new \Exception('Failed to load database XML structure');

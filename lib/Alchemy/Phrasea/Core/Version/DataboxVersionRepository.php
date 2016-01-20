@@ -44,8 +44,11 @@ class DataboxVersionRepository implements VersionRepository
         $this->connection->exec("DELETE FROM pref WHERE prop='version'");
 
         $statement = $this->connection->executeQuery(
-            'INSERT INTO pref (prop, value, locale, updated_on) VALUES ("version", :version, "", NOW())',
-            [ ':version' => $version->getNumber() ]
+            'INSERT INTO pref (prop, value, locale, updated_on) VALUES ("version", :version, "", :updated_on)',
+            [
+                ':version' => $version->getNumber(),
+                ':updated_on' => (new \DateTime())->format('Y-m-d H:i:s')
+            ]
         );
 
         return $statement->rowCount() == 1;

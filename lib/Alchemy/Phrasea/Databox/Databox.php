@@ -252,7 +252,8 @@ class Databox
     private function parseParameters()
     {
         if ($this->parameters === null) {
-            $dsnParameters = explode(';', $this->dsn);
+            list(, $dsn) = explode(':', $this->dsn, 2);
+            $dsnParameters = explode(';', $dsn);
 
             $this->parameters = [];
 

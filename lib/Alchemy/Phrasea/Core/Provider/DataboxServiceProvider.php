@@ -3,6 +3,10 @@
 namespace Alchemy\Phrasea\Core\Provider;
 
 use Alchemy\Phrasea\Application as PhraseaApplication;
+use Alchemy\Phrasea\Core\Database\DatabaseMaintenanceService;
+use Alchemy\Phrasea\Core\Database\TableBuilder\DoctrineSqliteTableBuilder;
+use Alchemy\Phrasea\Core\Database\TableBuilder\MySqlTableBuilder;
+use Alchemy\Phrasea\Core\Database\TableBuilderFactory;
 use Alchemy\Phrasea\Databox\CachingDataboxRepository;
 use Alchemy\Phrasea\Databox\DataboxFactory;
 use Alchemy\Phrasea\Databox\DataboxService;
@@ -16,6 +20,7 @@ use Alchemy\Phrasea\Databox\Process\ReplaceStructure\ReplaceStructureStep;
 use Alchemy\Phrasea\Databox\Process\StepRegistry;
 use Alchemy\Phrasea\Databox\Process\Mount;
 use Alchemy\Phrasea\Databox\Process\Unmount;
+use Doctrine\DBAL\Connection;
 use Silex\Application;
 use Silex\ServiceProviderInterface;
 
@@ -76,6 +81,20 @@ class DataboxServiceProvider implements ServiceProviderInterface
                 $processRegistry,
                 $app['dbal.provider']
             );
+        });
+
+        $app['databoxes.maintenance_service'] = $app->protect(function (Connection $connection) use ($app) {
+            $tableBuilderFactory = new TableBuilderFactory();
+
+            $tableBuilderFactory->addDriverFactory('pdo_mysql', function () use ($app) {
+                return new MySqlTableBuilder($app['auth.password-encoder'], $app['random.medium']);
+            });
+
+            $tableBuilderFactory->addDriverFactory('pdo_sqlite', function () use ($app) {
+                return new DoctrineSqliteTableBuilder($app['auth.password-encoder'], $app['random.medium']);
+            });
+
+            return new DatabaseMaintenanceService($app, $connection, $tableBuilderFactory);
         });
     }
 

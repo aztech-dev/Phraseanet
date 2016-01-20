@@ -65,19 +65,15 @@ class GrantCollectionAdminRights implements AddAdminStep
         $base_ids = [];
 
         foreach ($rs as $row) {
-            try {
-                $stmt->execute([
-                    ':coll_id'  => $row['coll_id'],
-                    ':sbas_id'  => $databox->getDataboxId()
-                ]);
+            $stmt->execute([
+                ':coll_id'  => $row['coll_id'],
+                ':sbas_id'  => $databox->getDataboxId()
+            ]);
 
-                $base_ids[] = $base_id = $appboxConnection->lastInsertId();
+            $base_ids[] = $base_id = $appboxConnection->lastInsertId();
 
-                if ( ! empty($row['logo'])) {
-                    file_put_contents($this->app['root.path'] . '/config/minilogos/' . $base_id, $row['logo']);
-                }
-            } catch (\Exception $e) {
-                unset($e);
+            if ( ! empty($row['logo'])) {
+                file_put_contents($this->app['root.path'] . '/config/minilogos/' . $base_id, $row['logo']);
             }
         }
 
