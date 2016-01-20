@@ -1,6 +1,7 @@
 <?php
 
 use Alchemy\Phrasea\Application;
+use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Model\Entities\ElasticsearchRecord;
 use Alchemy\Phrasea\SearchEngine\SearchEngineInterface;
 use Alchemy\Phrasea\SearchEngine\SearchEngineResult;
@@ -87,21 +88,24 @@ abstract class PhraseanetAuthenticatedWebTestCase extends \PhraseanetAuthenticat
         $app = $this->getApplication();
         $info = $app['phraseanet.configuration']['main']['database'];
 
+        $connection = $app['dbal.provider']([
+            'host'     => $info['host'],
+            'port'     => $info['port'],
+            'user'     => $info['user'],
+            'password' => $info['password'],
+            'dbname'   => 'unit_test_db',
+        ]);
+
         try {
-            $connection = $app['dbal.provider']([
-                'host'     => $info['host'],
-                'port'     => $info['port'],
-                'user'     => $info['user'],
-                'password' => $info['password'],
-                'dbname'   => 'unit_test_db',
-            ]);
             $connection->connect();
         } catch (DBALException $e) {
             $this->markTestSkipped('Could not reach DB');
         }
 
-        $databox = \databox::create(
-            $app,
+        /** @var DataboxService $databoxService */
+        $databoxService = $app['databoxes.service'];
+
+        $databox = $databoxService->createDatabox(
             $connection,
             new \SplFileInfo($app['root.path'] . '/lib/conf.d/data_templates/fr-simple.xml')
         );

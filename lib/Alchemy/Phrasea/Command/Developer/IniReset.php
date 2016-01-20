@@ -13,6 +13,7 @@ namespace Alchemy\Phrasea\Command\Developer;
 
 use Alchemy\Phrasea\Command\Command;
 use Alchemy\Phrasea\Core\Version;
+use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Exception\RuntimeException;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
@@ -191,20 +192,23 @@ class IniReset extends Command
             $output->writeln("<info>Install successful !</info>");
         }
 
+        /** @var DataboxService $databoxService */
+        $databoxService = $this->container['databoxes.service'];
+
         foreach ($dbs['dbs'] as $databox) {
             if (!in_array($databox->get_dbname(), $dbToMount) && !in_array('all', $dbToMount)) {
                 continue;
             }
             $credentials = $databox->get_connection()->get_credentials();
 
-            \databox::mount(
-                $this->container,
+            $databoxService->mountDatabox(
                 $credentials['hostname'],
                 $credentials['port'],
                 $credentials['user'],
                 $credentials['password'],
                 $databox->get_dbname()
             );
+            
             $output->writeln('Mounting database "'.$databox->get_dbname().'"...<info>OK</info>');
         }
 

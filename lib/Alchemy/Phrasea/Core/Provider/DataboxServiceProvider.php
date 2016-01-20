@@ -7,6 +7,11 @@ use Alchemy\Phrasea\Databox\CachingDataboxRepository;
 use Alchemy\Phrasea\Databox\DataboxFactory;
 use Alchemy\Phrasea\Databox\DataboxService;
 use Alchemy\Phrasea\Databox\DbalDataboxRepository;
+use Alchemy\Phrasea\Databox\Process\Unmount\DeleteDataboxEntitiesStep;
+use Alchemy\Phrasea\Databox\Process\Unmount\DeleteDataboxReferencesStep;
+use Alchemy\Phrasea\Databox\Process\Unmount\DeleteUserRightsStep;
+use Alchemy\Phrasea\Databox\Process\Unmount\StepRegistry;
+use Alchemy\Phrasea\Databox\Process\Unmount\UnmountCollectionsStep;
 use Silex\Application;
 use Silex\ServiceProviderInterface;
 
@@ -44,8 +49,38 @@ class DataboxServiceProvider implements ServiceProviderInterface
         });
 
         $app['databoxes.service'] = $app->share(function (PhraseaApplication $app) {
-             return new DataboxService($app, $app['repo.databoxes'], $app['dispatcher']);
+            $unmountStepRegistry = $this->buildStepRegistry($app);
+
+            return new DataboxService($app, $app['repo.databoxes'], $app['dispatcher'], $unmountStepRegistry);
         });
+    }
+
+    private function buildStepRegistry(PhraseaApplication $app)
+    {
+        $registry = new StepRegistry();
+
+        $registry->addStepFactory(function () {
+            return new UnmountCollectionsStep();
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new DeleteUserRightsStep($app, $app->getAclProvider());
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new DeleteDataboxEntitiesStep(
+                $app,
+                $app['orm.em'],
+                $app['repo.story-wz'],
+                $app['repo.basket-elements']
+            );
+        });
+
+        $registry->addStepFactory(function () use ($app) {
+            return new DeleteDataboxReferencesStep($app->getApplicationBox(), $app['conf']);
+        });
+
+        return $registry;
     }
 
     /**

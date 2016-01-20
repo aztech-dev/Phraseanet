@@ -7,7 +7,9 @@ use Alchemy\Phrasea\Core\Configuration\PropertyAccess;
 use Alchemy\Phrasea\Core\Event\Databox\CreatedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
 use Alchemy\Phrasea\Core\Event\Databox\MountedEvent;
+use Alchemy\Phrasea\Core\Event\Databox\UnmountedEvent;
 use Alchemy\Phrasea\Databox\Field\DublinCoreFieldProvider;
+use Alchemy\Phrasea\Databox\Process\Unmount\StepRegistry;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -45,18 +47,27 @@ class DataboxService
     private $eventDispatcher;
 
     /**
+     * @var StepRegistry
+     */
+    private $unmountStepRegistry;
+
+    /**
      * @param Application $application
      * @param DataboxRepository $databoxRepository
      * @param EventDispatcherInterface $dispatcher
+     * @param StepRegistry $unmountStepRegistry
      */
     public function __construct(
         Application $application,
         DataboxRepository $databoxRepository,
-        EventDispatcherInterface $dispatcher
+        EventDispatcherInterface $dispatcher,
+        StepRegistry $unmountStepRegistry
     ) {
         $this->application = $application;
         $this->databoxRepository = $databoxRepository;
         $this->eventDispatcher = $dispatcher;
+        $this->unmountStepRegistry = $unmountStepRegistry;
+
         $this->dcFieldProvider = new DublinCoreFieldProvider();
 
         // @todo Constructor injection for following assignments
@@ -117,6 +128,22 @@ class DataboxService
     }
 
     /**
+     * @param \databox $databox
+     */
+    public function unmountDatabox(\databox $databox)
+    {
+        $databoxVO = $databox->getDataObject();
+        $databaseName = $databoxVO->getDatabase();
+
+        foreach ($this->unmountStepRegistry->getSteps() as $step) {
+            $step->execute($databox);
+        }
+
+        $event = new UnmountedEvent(null, [ 'dbname' => $databaseName ]);
+        $this->eventDispatcher->dispatch(DataboxEvents::UNMOUNTED, $event);
+    }
+
+    /**
      * @return \databox_Field_DCESAbstract[]
      */
     public function getAvailableDublinCoreFields()
@@ -129,7 +156,7 @@ class DataboxService
      * @return array
      * @throws \Doctrine\DBAL\DBALException
      */
-    protected function assertDatabaseIsNotUsedByAnotherDatabox(Connection $connection)
+    private function assertDatabaseIsNotUsedByAnotherDatabox(Connection $connection)
     {
         $sql = 'SELECT sbas_id
                 FROM sbas
@@ -159,7 +186,7 @@ class DataboxService
     /**
      * @param Connection $connection
      */
-    protected function createDatabaseForNewDatabox(Connection $connection)
+    private function createDatabaseForNewDatabox(Connection $connection)
     {
         try {
             $sql = 'CREATE DATABASE `' . $connection->getDatabase() . '` CHARACTER SET utf8 COLLATE utf8_unicode_ci';
@@ -176,7 +203,7 @@ class DataboxService
      * @return array
      * @throws \Doctrine\DBAL\DBALException
      */
-    protected function getNewDataboxOrdinal()
+    private function getNewDataboxOrdinal()
     {
         $sql = 'SELECT COALESCE(MAX(ord), 0) + 1 as ord FROM sbas';
 
@@ -193,7 +220,7 @@ class DataboxService
      * @return array
      * @throws \Doctrine\DBAL\DBALException
      */
-    protected function useDataboxDatabase(Connection $connection)
+    private function useDataboxDatabase(Connection $connection)
     {
         $sql = 'USE `' . $connection->getDatabase() . '`';
         $stmt = $connection->prepare($sql);
@@ -205,7 +232,7 @@ class DataboxService
      * @return \databox
      * @throws \Doctrine\DBAL\DBALException
      */
-    protected function registerDataboxInAppBox(Connection $databoxConnection)
+    private function registerDataboxInAppBox(Connection $databoxConnection)
     {
         $appConnection = $this->applicationBox->get_connection();
 
@@ -238,7 +265,7 @@ class DataboxService
      * @param $dbname
      * @return Connection
      */
-    protected function createDataboxConnection($host, $port, $user, $password, $dbname)
+    private function createDataboxConnection($host, $port, $user, $password, $dbname)
     {
         $connectionParams = [
             'host' => $host,

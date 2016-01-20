@@ -19,6 +19,7 @@ use Alchemy\Phrasea\Core\Event\Record\SubDefinitionCreationEvent;
 use Alchemy\Phrasea\Core\Event\Record\SubDefinitionsCreationEvent;
 use Alchemy\Phrasea\Core\Event\Record\SubDefinitionCreationFailedEvent;
 use Alchemy\Phrasea\Core\Event\Record\RecordEvents;
+use Alchemy\Phrasea\Utilities\PathHelper;
 use MediaAlchemyst\Alchemyst;
 use MediaAlchemyst\Specification\SpecificationInterface;
 use MediaVorus\MediaVorus;
@@ -152,7 +153,7 @@ class SubdefGenerator
         if ($oldVersion) {
             $pathdest = \p4string::addEndSlash(pathinfo($oldVersion, PATHINFO_DIRNAME));
         } else {
-            $pathdest = \databox::dispatch($this->filesystem, $subdef->get_path());
+            $pathdest = PathHelper::dispatch($this->filesystem, $subdef->get_path());
         }
 
         return $pathdest . $record->getRecordId() . '_' . $subdef->get_name() . '.' . $this->getExtensionFromSpec($subdef->getSpecs());

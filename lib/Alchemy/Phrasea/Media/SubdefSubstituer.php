@@ -14,6 +14,7 @@ namespace Alchemy\Phrasea\Media;
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Core\Event\Record\MediaSubstitutedEvent;
 use Alchemy\Phrasea\Core\Event\Record\RecordEvents;
+use Alchemy\Phrasea\Utilities\PathHelper;
 use MediaAlchemyst\Alchemyst;
 use MediaAlchemyst\Exception\ExceptionInterface as MediaAlchemystException;
 use MediaVorus\Media\MediaInterface;
@@ -47,7 +48,7 @@ class SubdefSubstituer
             $pathhd = \p4string::addEndSlash((string) ($baseprefs->path));
 
             $filehd = $record->get_record_id() . "_document." . strtolower($media->getFile()->getExtension());
-            $pathhd = \databox::dispatch($this->fs, $pathhd);
+            $pathhd = PathHelper::dispatch($this->fs, $pathhd);
 
             $this->fs->copy($media->getFile()->getRealPath(), $pathhd . $filehd, true);
 
@@ -62,7 +63,7 @@ class SubdefSubstituer
                 $record->get_subdef($name)->remove_file();
                 $record->clearSubdefCache($name);
             } else {
-                $path = \databox::dispatch($this->fs, $subdef_def->get_path());
+                $path = PathHelper::dispatch($this->fs, $subdef_def->get_path());
                 $this->fs->mkdir($path, 0750);
                 $path_file_dest = $path . $newfilename;
             }
