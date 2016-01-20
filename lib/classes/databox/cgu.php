@@ -48,7 +48,7 @@ class databox_cgu
 
         foreach ($app->getDataboxes() as $databox) {
             try {
-                $cgus = $databox->get_cgus();
+                $cgus = $databox->getTermsOfUse();
 
                 if ( ! isset($cgus[$app['locale']]))
                     throw new Exception('No CGus for this locale');

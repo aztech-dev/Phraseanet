@@ -28,11 +28,14 @@ use Alchemy\Phrasea\Model\Entities\User;
 use Alchemy\Phrasea\Status\StatusStructure;
 use Alchemy\Phrasea\Status\StatusStructureFactory;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\Statement;
 use Symfony\Component\HttpFoundation\File\File;
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
 use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
 
+/**
+ * Class databox
+ *
+ */
 class databox extends base implements ThumbnailedElement
 {
     const BASE_TYPE = self::DATA_BOX;
@@ -502,68 +505,29 @@ class databox extends base implements ThumbnailedElement
     /**
      *
      * @return Array
+     * @deprecated Use CollectionService::getMountCollections() instead.
      */
     public function get_mountable_colls()
     {
-        /** @var Connection $conn */
-        $conn = $this->get_appbox()->get_connection();
-        $colls = [];
-
-        $sql = 'SELECT server_coll_id FROM bas WHERE sbas_id = :sbas_id';
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([':sbas_id' => $this->databox->getDataboxId()]);
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-        unset($stmt);
-
-        foreach ($rs as $row) {
-            $colls[] = (int) $row['server_coll_id'];
-        }
-
-        $mountable_colls = [];
-
-        $builder = $this->get_connection()->createQueryBuilder();
-        $builder
-            ->select('c.coll_id', 'c.asciiname')
-            ->from('coll', 'c');
-
-        if (count($colls) > 0) {
-            $builder
-                ->where($builder->expr()->notIn('c.coll_id', [':colls']))
-                ->setParameter('colls', $colls, Connection::PARAM_INT_ARRAY)
-            ;
-        }
-
-        /** @var Statement $stmt */
-        $stmt = $builder->execute();
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-        unset($stmt);
-
-        foreach ($rs as $row) {
-            $mountable_colls[$row['coll_id']] = $row['asciiname'];
-        }
-
-        return $mountable_colls;
+        return $this->applicationBox
+            ->getCollectionService()
+            ->getCollectionRepository($this->databox)
+            ->findUnmountedCollections();
     }
 
+    /**
+     * @return collection[]
+     */
     public function get_activable_colls()
     {
-        /** @var Connection $conn */
-        $conn = $this->get_appbox()->get_connection();
-        $base_ids = [];
+        $collections = $this->applicationBox
+            ->getCollectionService()
+            ->getCollectionRepository($this->databox)
+            ->findActivableCollections();
 
-        $sql = 'SELECT base_id FROM bas WHERE sbas_id = :sbas_id AND active = "0"';
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([':sbas_id' => $this->databox->getDataboxId()]);
-        $rs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-
-        foreach ($rs as $row) {
-            $base_ids[] = (int) $row['base_id'];
-        }
-
-        return $base_ids;
+        return array_map(function (\collection $collection) {
+            return $collection->getReference()->getBaseId();
+        }, $collections);
     }
 
     public function saveCterms(DOMDocument $dom_cterms)

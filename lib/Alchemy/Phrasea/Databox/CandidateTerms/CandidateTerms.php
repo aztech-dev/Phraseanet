@@ -31,7 +31,7 @@ class CandidateTerms
     /**
      * @return string
      */
-    public function getRawThesaurus()
+    public function getRawTerms()
     {
         return $this->xmlHelper->getRawXml();
     }
@@ -59,5 +59,4 @@ class CandidateTerms
     {
         return $this->getDomXpath();
     }
-
 }

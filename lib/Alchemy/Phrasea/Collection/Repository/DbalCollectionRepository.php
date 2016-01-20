@@ -61,6 +61,66 @@ class DbalCollectionRepository implements CollectionRepository
     }
 
     /**
+     * @return string[] The names of unmounted collections indexed by their collection ID.
+     */
+    public function findUnmountedCollections()
+    {
+        $references = $this->referenceRepository->findAllByDatabox($this->databoxId);
+
+        if (empty($references)) {
+            return [];
+        }
+
+        $parameters = [];
+
+        foreach ($references as $reference) {
+            $parameters[] = $reference->getCollectionId();
+        }
+
+        $query = self::$selectQuery . ' WHERE coll_id NOT IN (:collectionIds)';
+        $parameters = [ 'collectionIds' => $parameters ];
+        $parameterTypes = [ 'collectionIds' => Connection::PARAM_INT_ARRAY ];
+
+        $rows = $this->databoxConnection->fetchAll($query, $parameters, $parameterTypes);
+        $collections = [];
+
+        foreach ($rows as $row) {
+            $collections[(int) $row['coll_id']] = (string) $row['asciiname'];
+        }
+
+        return $collections;
+    }
+
+    /**
+     * @return \collection[]
+     */
+    public function findActivableCollections()
+    {
+        $references = $this->referenceRepository->findAllByDatabox($this->databoxId);
+        $parameters = [];
+
+        foreach ($references as $reference) {
+            if ($reference->isActive()) {
+                continue;
+            }
+
+            $parameters[] = $reference->getCollectionId();
+        }
+
+        if (empty($parameters)) {
+            return [];
+        }
+
+        $query = self::$selectQuery . ' WHERE coll_id IN (:collectionIds)';
+        $parameters = [ 'collectionIds' => $parameters ];
+        $parameterTypes = [ 'collectionIds' => Connection::PARAM_INT_ARRAY ];
+
+        $rows = $this->databoxConnection->fetchAll($query, $parameters, $parameterTypes);
+
+        return $this->collectionFactory->createMany($this->databoxId, $references, $rows);
+    }
+
+    /**
      * @return \collection[]
      */
     public function findAll()

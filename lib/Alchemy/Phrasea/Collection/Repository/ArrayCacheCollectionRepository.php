@@ -17,9 +17,39 @@ class ArrayCacheCollectionRepository implements CollectionRepository
      */
     private $collectionCache = null;
 
+    /**
+     * @var string[]
+     */
+    private $mountableCollectionsCache = null;
+
+    /**
+     * @param CollectionRepository $collectionRepository
+     */
     public function __construct(CollectionRepository $collectionRepository)
     {
         $this->collectionRepository = $collectionRepository;
+    }
+
+    /**
+     * @return string[] The names of unmounted collections indexed by their collection ID.
+     */
+    public function findUnmountedCollections()
+    {
+        if ($this->mountableCollectionsCache === null) {
+            $this->mountableCollectionsCache = $this->collectionRepository->findUnmountedCollections();
+        }
+
+        return $this->mountableCollectionsCache;
+    }
+
+    /**
+     * @return \collection[]
+     */
+    public function findActivableCollections()
+    {
+        return array_filter($this->findAll(), function (\collection $collection) {
+            return ! $collection->getReference()->isActive();
+        });
     }
 
     /**
@@ -53,9 +83,8 @@ class ArrayCacheCollectionRepository implements CollectionRepository
     {
         $this->collectionRepository->save($collection);
 
-        if ($this->collectionCache !== null) {
-            $this->collectionCache = null;
-        }
+        $this->collectionCache = null;
+        $this->mountableCollectionsCache = null;
     }
 
     public function delete(Collection $collection)
@@ -65,5 +94,7 @@ class ArrayCacheCollectionRepository implements CollectionRepository
         if (isset($this->collectionCache[$collection->getCollectionId()])) {
             unset($this->collectionCache[$collection->getCollectionId()]);
         }
+
+        $this->mountableCollectionsCache = null;
     }
 }

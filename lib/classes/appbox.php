@@ -316,6 +316,7 @@ class appbox extends base
         if ($this->collectionService === null) {
             $this->collectionService = new CollectionService(
                 $this->app,
+                $this->app['repo.collections-registry'],
                 $this->connection,
                 new DataboxConnectionProvider($this)
             );

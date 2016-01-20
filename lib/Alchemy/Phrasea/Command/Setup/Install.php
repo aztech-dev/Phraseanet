@@ -340,8 +340,6 @@ class Install extends Command
         } catch (\Exception $e) {
             $output->writeln("\n\t<error>Invalid connection parameters</error>\n");
 
-            var_dump($e->getMessage(), $e->getTraceAsString());
-
             return false;
         }
 

@@ -4,6 +4,7 @@ namespace Alchemy\Phrasea\Collection;
 
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Collection\Reference\CollectionReference;
+use Alchemy\Phrasea\Databox\Databox;
 use Alchemy\Phrasea\Databox\DataboxConnectionProvider;
 use Alchemy\Phrasea\Model\Entities\User;
 use Doctrine\DBAL\Connection;
@@ -15,15 +16,36 @@ class CollectionService
      */
     private $app;
 
-    private $connection;
+    /**
+     * @var Connection
+     */
+    private $appboxConnection;
 
-    private $connectionProvider;
+    /**
+     * @var DataboxConnectionProvider
+     */
+    private $databoxConnectionProvider;
 
-    public function __construct(Application $application, Connection $connection, DataboxConnectionProvider $connectionProvider)
-    {
+    /**
+     * @var CollectionRepositoryRegistry
+     */
+    private $collectionRepositoryRegistry;
+
+    public function __construct(
+        Application $application,
+        CollectionRepositoryRegistry $collectionRepositoryRegistry,
+        Connection $appboxConnection,
+        DataboxConnectionProvider $connectionProvider
+    ) {
         $this->app = $application;
-        $this->connection = $connection;
-        $this->connectionProvider = $connectionProvider;
+        $this->appboxConnection = $appboxConnection;
+        $this->databoxConnectionProvider = $connectionProvider;
+        $this->collectionRepositoryRegistry = $collectionRepositoryRegistry;
+    }
+
+    public function getCollectionRepository(Databox $databox)
+    {
+        return $this->collectionRepositoryRegistry->getRepositoryByDatabox($databox->getDataboxId());
     }
 
     /**
@@ -33,7 +55,7 @@ class CollectionService
      */
     public function getRecordCount(Collection $collection)
     {
-        $connection = $this->connectionProvider->getConnection($collection->getDataboxId());
+        $connection = $this->databoxConnectionProvider->getConnection($collection->getDataboxId());
 
         $sql = "SELECT COALESCE(COUNT(record_id), 0) AS recordCount FROM record WHERE coll_id = :coll_id";
         $stmt = $connection->prepare($sql);
@@ -41,7 +63,7 @@ class CollectionService
         $rowbas = $stmt->fetch(\PDO::FETCH_ASSOC);
         $stmt->closeCursor();
 
-        $amount = $rowbas ? (int) $rowbas["recordCount"] : null;
+        $amount = $rowbas ? (int)$rowbas["recordCount"] : null;
 
         return $amount;
     }
@@ -52,13 +74,14 @@ class CollectionService
      */
     public function getRecordDetails(Collection $collection)
     {
-        $sql = "SELECT record.coll_id,name,COALESCE(asciiname, CONCAT('_',record.coll_id)) AS asciiname,
+        $sql = "SELECT record.coll_id, name,
+                    COALESCE(asciiname, CONCAT('_',record.coll_id)) AS asciiname,
                     SUM(1) AS n, SUM(size) AS size
                   FROM record NATURAL JOIN subdef
                     INNER JOIN coll ON record.coll_id=coll.coll_id AND coll.coll_id = :coll_id
                   GROUP BY record.coll_id, subdef.name";
 
-        $connection = $this->connectionProvider->getConnection($collection->getDataboxId());
+        $connection = $this->databoxConnectionProvider->getConnection($collection->getDataboxId());
 
         $stmt = $connection->prepare($sql);
         $stmt->execute([':coll_id' => $collection->getCollectionId()]);
@@ -68,10 +91,11 @@ class CollectionService
         $ret = [];
         foreach ($rs as $row) {
             $ret[] = [
-                "coll_id" => (int) $row["coll_id"],
-                "name"    => $row["name"],
-                "amount"  => (int) $row["n"],
-                "size"    => (int) $row["size"]];
+                "coll_id" => (int)$row["coll_id"],
+                "name" => $row["name"],
+                "amount" => (int)$row["n"],
+                "size" => (int)$row["size"]
+            ];
         }
 
         return $ret;
@@ -87,7 +111,7 @@ class CollectionService
         $sql = 'SELECT path, file FROM record r INNER JOIN subdef s USING(record_id)
             WHERE r.coll_id = :coll_id AND r.type="image" AND s.name="preview"';
 
-        $connection = $this->connectionProvider->getConnection($collection->getDataboxId());
+        $connection = $this->databoxConnectionProvider->getConnection($collection->getDataboxId());
 
         $stmt = $connection->prepare($sql);
         $stmt->execute([':coll_id' => $collection->getCollectionId()]);
@@ -120,7 +144,7 @@ class CollectionService
             $params[':record_id'] = $record_id;
         }
 
-        $connection = $this->connectionProvider->getConnection($collection->getDataboxId());
+        $connection = $this->databoxConnectionProvider->getConnection($collection->getDataboxId());
 
         $stmt = $connection->prepare($sql);
         $stmt->execute($params);
@@ -145,7 +169,7 @@ class CollectionService
             $this->emptyCollection($databox, $collection);
         }
 
-        $connection = $this->connectionProvider->getConnection($collection->getDataboxId());
+        $connection = $this->databoxConnectionProvider->getConnection($collection->getDataboxId());
 
         $sql = "DELETE FROM coll WHERE coll_id = :coll_id";
         $stmt = $connection->prepare($sql);
@@ -153,12 +177,12 @@ class CollectionService
         $stmt->closeCursor();
 
         $sql = "DELETE FROM bas WHERE base_id = :base_id";
-        $stmt = $this->connection->prepare($sql);
+        $stmt = $this->appboxConnection->prepare($sql);
         $stmt->execute([':base_id' => $reference->getBaseId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM basusr WHERE base_id = :base_id";
-        $stmt = $this->connection->prepare($sql);
+        $stmt = $this->appboxConnection->prepare($sql);
         $stmt->execute([':base_id' => $reference->getBaseId()]);
         $stmt->closeCursor();
 
@@ -174,13 +198,13 @@ class CollectionService
      */
     public function emptyCollection(\databox $databox, Collection $collection, $pass_quantity = 100)
     {
-        $pass_quantity = (int) $pass_quantity > 200 ? 200 : (int) $pass_quantity;
-        $pass_quantity = (int) $pass_quantity < 10 ? 10 : (int) $pass_quantity;
+        $pass_quantity = (int)$pass_quantity > 200 ? 200 : (int)$pass_quantity;
+        $pass_quantity = (int)$pass_quantity < 10 ? 10 : (int)$pass_quantity;
 
         $sql = "SELECT record_id FROM record WHERE coll_id = :coll_id
             ORDER BY record_id DESC LIMIT 0, " . $pass_quantity;
 
-        $connection = $this->connectionProvider->getConnection($collection->getDataboxId());
+        $connection = $this->databoxConnectionProvider->getConnection($collection->getDataboxId());
 
         $stmt = $connection->prepare($sql);
         $stmt->execute([':coll_id' => $collection->getCollectionId()]);
@@ -206,31 +230,30 @@ class CollectionService
         $params = [':base_id' => $reference->getBaseId()];
 
         $query = $this->app['phraseanet.user-query'];
-        $total = $query->on_base_ids([$reference->getBaseId()])
+        $query->on_base_ids([$reference->getBaseId()])
             ->include_phantoms(false)
             ->include_special_users(true)
             ->include_invite(true)
-            ->include_templates(true)->get_total();
+            ->include_templates(true);
+
         $n = 0;
 
-        while ($n < $total) {
-            $results = $query->limit($n, 50)->execute()->get_results();
-
+        while ($results = $query->limit($n, 50)->execute()->get_results()) {
             foreach ($results as $user) {
                 $this->app->getAclForUser($user)->delete_data_from_cache(\ACL::CACHE_RIGHTS_SBAS);
                 $this->app->getAclForUser($user)->delete_data_from_cache(\ACL::CACHE_RIGHTS_BAS);
             }
 
-            $n+=50;
+            $n += 50;
         }
 
         $sql = "DELETE FROM basusr WHERE base_id = :base_id";
-        $stmt = $this->connection->prepare($sql);
+        $stmt = $this->appboxConnection->prepare($sql);
         $stmt->execute($params);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM bas WHERE base_id = :base_id";
-        $stmt = $this->connection->prepare($sql);
+        $stmt = $this->appboxConnection->prepare($sql);
         $stmt->execute($params);
         $stmt->closeCursor();
     }
@@ -242,23 +265,23 @@ class CollectionService
     public function grantAdminRights(CollectionReference $reference, User $user)
     {
         $rights = [
-            "canputinalbum"   => "1",
-            "candwnldhd"      => "1",
-            "nowatermark"     => "1",
+            "canputinalbum" => "1",
+            "candwnldhd" => "1",
+            "nowatermark" => "1",
             "candwnldpreview" => "1",
-            "cancmd"          => "1",
-            "canadmin"        => "1",
-            "actif"           => "1",
-            "canreport"       => "1",
-            "canpush"         => "1",
-            "basusr_infousr"  => "",
-            "canaddrecord"    => "1",
-            "canmodifrecord"  => "1",
+            "cancmd" => "1",
+            "canadmin" => "1",
+            "actif" => "1",
+            "canreport" => "1",
+            "canpush" => "1",
+            "basusr_infousr" => "",
+            "canaddrecord" => "1",
+            "canmodifrecord" => "1",
             "candeleterecord" => "1",
-            "chgstatus"       => "1",
-            "imgtools"        => "1",
-            "manage"          => "1",
-            "modify_struct"   => "1"
+            "chgstatus" => "1",
+            "imgtools" => "1",
+            "manage" => "1",
+            "modify_struct" => "1"
         ];
 
         $this->app->getAclForUser($user)->update_rights_to_base($reference->getBaseId(), $rights);

@@ -1274,10 +1274,10 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         $filesystem->copy($file->getFile()->getRealPath(), $pathhd . $newname, true);
 
         $media = $app->getMediaFromUri($pathhd . $newname);
+
         media_subdef::create($app, $record, 'document', $media);
 
         $record->delete_data_from_cache(\record_adapter::CACHE_SUBDEFS);
-
         $record->insertTechnicalDatas($app['mediavorus']);
 
         $record->dispatch(RecordEvents::CREATED, new CreatedEvent($record));
@@ -1398,7 +1398,7 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
      */
     public function delete()
     {
-        $connbas = $this->getDatabox()->get_connection();
+        $databoxConnection = $this->getDatabox()->get_connection();
 
         $ftodel = [];
         foreach ($this->get_subdefs() as $subdef) {
@@ -1426,52 +1426,52 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
             ->log($this, Session_Logger::EVENT_DELETE, $origcoll, $xml);
 
         $sql = "DELETE FROM record WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM metadatas WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM prop WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM idx WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM permalinks WHERE subdef_id IN (SELECT subdef_id FROM subdef WHERE record_id=:record_id)";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM subdef WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM technical_datas WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM thit WHERE record_id = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM regroup WHERE rid_parent = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
         $sql = "DELETE FROM regroup WHERE rid_child = :record_id";
-        $stmt = $connbas->prepare($sql);
+        $stmt = $databoxConnection->prepare($sql);
         $stmt->execute([':record_id' => $this->getRecordId()]);
         $stmt->closeCursor();
 
@@ -1492,7 +1492,6 @@ class record_adapter implements RecordInterface, cache_cacheableInterface
         }
 
         $this->app['orm.em']->flush();
-
         $this->app['filesystem']->remove($ftodel);
 
         $this->delete_data_from_cache(self::CACHE_SUBDEFS);

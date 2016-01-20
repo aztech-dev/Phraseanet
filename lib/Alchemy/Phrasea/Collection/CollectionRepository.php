@@ -6,6 +6,16 @@ interface CollectionRepository
 {
 
     /**
+     * @return string[] The names of unmounted collections indexed by their collection ID.
+     */
+    public function findUnmountedCollections();
+
+    /**
+     * @return \collection[]
+     */
+    public function findActivableCollections();
+
+    /**
      * @return \collection[]
      */
     public function findAll();
