@@ -42,18 +42,13 @@ class ManagerTest extends \PhraseanetTestCase
 
     public function testFactoryCreateOne()
     {
-        $compiler = $this->getMockBuilder('Alchemy\Phrasea\Core\Configuration\Compiler')
-            ->disableOriginalConstructor()
-            ->getMock();
         $logger = $this->getMockBuilder('Monolog\Logger')
             ->disableOriginalConstructor()
             ->getMock();
+
         $factory = $this->getMockBuilder('Alchemy\Phrasea\Cache\Factory')
             ->disableOriginalConstructor()
             ->getMock();
-
-        $compiler->expects($this->once())
-            ->method('compile');
 
         $cache = $this->getMock('Alchemy\Phrasea\Cache\Cache');
 
@@ -67,105 +62,22 @@ class ManagerTest extends \PhraseanetTestCase
 
         $this->createEmptyRegistry();
 
-        $manager = new Manager($compiler, $this->file, $logger, $factory);
+        $manager = new Manager($logger, $factory);
         $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
         $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
         $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
         $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
-    }
-
-    public function testNoCompilationIfNoChange()
-    {
-        file_put_contents($this->file, $this->compiler->compile(["custom-type" => "array"]));
-
-        $compiler = $this->getMockBuilder('Alchemy\Phrasea\Core\Configuration\Compiler')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $logger = $this->getMockBuilder('Monolog\Logger')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $factory = $this->getMockBuilder('Alchemy\Phrasea\Cache\Factory')
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $compiler->expects($this->never())
-            ->method('compile');
-
-        $cache = $this->getMock('Alchemy\Phrasea\Cache\Cache');
-
-        $name = 'array';
-        $values = ['option', 'value'];
-
-        $factory->expects($this->once())
-            ->method('create')
-            ->with($name, $values)
-            ->will($this->returnValue($cache));
-
-        $manager = new Manager($compiler, $this->file, $logger, $factory);
-        $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
-    }
-
-    public function testNoCompilationIfNoChangeWithMultiple()
-    {
-        file_put_contents($this->file, $this->compiler->compile([
-            "custom-type" => "array",
-            "another-type" => "array",
-            "yet-another-type" => "array",
-        ]));
-
-        $compiler = $this->getMockBuilder('Alchemy\Phrasea\Core\Configuration\Compiler')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $logger = $this->getMockBuilder('Monolog\Logger')
-            ->disableOriginalConstructor()
-            ->getMock();
-        $factory = $this->getMockBuilder('Alchemy\Phrasea\Cache\Factory')
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $compiler->expects($this->never())
-            ->method('compile');
-
-        $cache = $this->getMock('Alchemy\Phrasea\Cache\Cache');
-
-        $name = 'array';
-        $values = ['option', 'value'];
-
-        $factory->expects($this->exactly(3))
-            ->method('create')
-            ->with($name, $values)
-            ->will($this->returnValue($cache));
-
-        $manager = new Manager($compiler, $this->file, $logger, $factory);
-        $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('another-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('yet-another-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('another-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('yet-another-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('another-type', $name, $values));
-        $this->assertSame($cache, $manager->factory('yet-another-type', $name, $values));
     }
 
     public function testUnknownCacheReturnsArrayCacheAndLogs()
     {
-        file_put_contents($this->file, $this->compiler->compile([
-            "custom-type" => "unknown",
-        ]));
-
-        $compiler = $this->getMockBuilder('Alchemy\Phrasea\Core\Configuration\Compiler')
-            ->disableOriginalConstructor()
-            ->getMock();
         $logger = $this->getMockBuilder('Monolog\Logger')
             ->disableOriginalConstructor()
             ->getMock();
+
         $factory = $this->getMockBuilder('Alchemy\Phrasea\Cache\Factory')
             ->disableOriginalConstructor()
             ->getMock();
-
-        $compiler->expects($this->never())
-            ->method('compile');
 
         $logger->expects($this->once())
             ->method('error');
@@ -185,7 +97,7 @@ class ManagerTest extends \PhraseanetTestCase
             ->with('array', [])
             ->will($this->returnValue($cache));
 
-        $manager = new Manager($compiler, $this->file, $logger, $factory);
+        $manager = new Manager($logger, $factory);
         $this->assertSame($cache, $manager->factory('custom-type', $name, $values));
     }
 }

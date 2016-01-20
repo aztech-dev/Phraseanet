@@ -9,7 +9,7 @@
  */
 namespace Alchemy\Tests\Phrasea\Databox;
 
-use Alchemy\Phrasea\Databox\CachingDataboxRepositoryDecorator;
+use Alchemy\Phrasea\Databox\CachingDataboxRepository;
 use Alchemy\Phrasea\Databox\DataboxFactory;
 use Alchemy\Phrasea\Databox\DataboxRepository;
 use Doctrine\Common\Cache\Cache;
@@ -26,7 +26,7 @@ final class CachedDataboxRepositoryTest extends \PHPUnit_Framework_TestCase
     /** @var ObjectProphecy */
     private $repository;
 
-    /** @var CachingDataboxRepositoryDecorator */
+    /** @var CachingDataboxRepository */
     private $sut;
 
     protected function setUp()
@@ -35,7 +35,7 @@ final class CachedDataboxRepositoryTest extends \PHPUnit_Framework_TestCase
         $this->repository = $this->prophesize(DataboxRepository::class);
         $this->factory = $this->prophesize(DataboxFactory::class);
 
-        $this->sut = new CachingDataboxRepositoryDecorator(
+        $this->sut = new CachingDataboxRepository(
             $this->repository->reveal(),
             $this->cache->reveal(),
             $this->cacheKey,

@@ -11,11 +11,12 @@
 
 use Alchemy\Phrasea\Application;
 use Alchemy\Phrasea\Collection\CollectionRepositoryRegistry;
-use Alchemy\Phrasea\Core\Connection\ConnectionSettings;
 use Alchemy\Phrasea\Core\PhraseaTokens;
 use Alchemy\Phrasea\Core\Thumbnail\ThumbnailedElement;
 use Alchemy\Phrasea\Core\Version\DataboxVersionRepository;
 use Alchemy\Phrasea\Databox\DataboxRepository;
+use Alchemy\Phrasea\Databox\DataboxService;
+use Alchemy\Phrasea\Databox\Field\DublinCoreFieldProvider;
 use Alchemy\Phrasea\Databox\Record\RecordRepository;
 use Alchemy\Phrasea\Exception\InvalidArgumentException;
 use Alchemy\Phrasea\Model\Entities\User;
@@ -29,9 +30,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Translation\TranslatorInterface;
 
 use Alchemy\Phrasea\Core\Event\Databox\DataboxEvents;
-use Alchemy\Phrasea\Core\Event\Databox\CreatedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\DeletedEvent;
-use Alchemy\Phrasea\Core\Event\Databox\MountedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\ReindexAskedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\StructureChangedEvent;
 use Alchemy\Phrasea\Core\Event\Databox\ThesaurusChangedEvent;
@@ -66,10 +65,18 @@ class databox extends base implements ThumbnailedElement
      * @param SplFileInfo $data_template
      * @return databox
      * @throws \Doctrine\DBAL\DBALException
+     * @deprecated Use DataboxService::createDatabox(...) instead
      */
     public static function create(Application $app, Connection $connection, \SplFileInfo $data_template)
     {
+        /** @var DataboxService $databoxService */
+        static $databoxService = null;
 
+        if ($databoxService === null) {
+            $databoxService = $app['databoxes.service'];
+        }
+
+        return $databoxService->createDatabox($connection, $data_template);
     }
 
     /**
@@ -81,61 +88,18 @@ class databox extends base implements ThumbnailedElement
      * @param  string      $password
      * @param  string      $dbname
      * @return databox
+     * @deprecated Use DataboxService::mountDatabox(...) instead
      */
     public static function mount(Application $app, $host, $port, $user, $password, $dbname)
     {
-        $conn = $app['db.provider']([
-            'host'     => $host,
-            'port'     => $port,
-            'user'     => $user,
-            'password' => $password,
-            'dbname'   => $dbname,
-        ]);
+        /** @var DataboxService $databoxService */
+        static $databoxService = null;
 
-        $conn->connect();
+        if ($databoxService === null) {
+            $databoxService = $app['databoxes.service'];
+        }
 
-        $conn = $app->getApplicationBox()->get_connection();
-        $sql = 'SELECT MAX(ord) as ord FROM sbas';
-        $stmt = $conn->prepare($sql);
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-        if ($row)
-            $ord = $row['ord'] + 1;
-
-        $sql = 'INSERT INTO sbas (sbas_id, ord, host, port, dbname, sqlengine, user, pwd)
-              VALUES (null, :ord, :host, :port, :dbname, "MYSQL", :user, :password)';
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([
-            ':ord'      => $ord,
-            ':host'     => $host,
-            ':port'     => $port,
-            ':dbname'   => $dbname,
-            ':user'     => $user,
-            ':password' => $password
-        ]);
-
-        $stmt->closeCursor();
-        $sbas_id = (int) $conn->lastInsertId();
-
-        $app->getApplicationBox()->delete_data_from_cache(appbox::CACHE_LIST_BASES);
-
-        $databox = $app->findDataboxById($sbas_id);
-
-        $databox->delete_data_from_cache(databox::CACHE_COLLECTIONS);
-
-        phrasea::reset_sbasDatas($app['phraseanet.appbox']);
-
-        cache_databox::update($app, $databox->get_sbas_id(), 'structure');
-
-        $app['dispatcher']->dispatch(
-            DataboxEvents::MOUNTED,
-            new MountedEvent(
-                $databox
-            )
-        );
-
-        return $databox;
+        return $databoxService->mountDatabox($host, $port, $user, $password, $dbname);
     }
 
     public static function dispatch(Filesystem $filesystem, $repository_path, $date = false)
@@ -164,23 +128,13 @@ class databox extends base implements ThumbnailedElement
 
     public static function get_available_dcfields()
     {
-        return [
-            databox_Field_DCESAbstract::Contributor => new databox_Field_DCES_Contributor(),
-            databox_Field_DCESAbstract::Coverage    => new databox_Field_DCES_Coverage(),
-            databox_Field_DCESAbstract::Creator     => new databox_Field_DCES_Creator(),
-            databox_Field_DCESAbstract::Date        => new databox_Field_DCES_Date(),
-            databox_Field_DCESAbstract::Description => new databox_Field_DCES_Description(),
-            databox_Field_DCESAbstract::Format      => new databox_Field_DCES_Format(),
-            databox_Field_DCESAbstract::Identifier  => new databox_Field_DCES_Identifier(),
-            databox_Field_DCESAbstract::Language    => new databox_Field_DCES_Language(),
-            databox_Field_DCESAbstract::Publisher   => new databox_Field_DCES_Publisher(),
-            databox_Field_DCESAbstract::Relation    => new databox_Field_DCES_Relation(),
-            databox_Field_DCESAbstract::Rights      => new databox_Field_DCES_Rights(),
-            databox_Field_DCESAbstract::Source      => new databox_Field_DCES_Source(),
-            databox_Field_DCESAbstract::Subject     => new databox_Field_DCES_Subject(),
-            databox_Field_DCESAbstract::Title       => new databox_Field_DCES_Title(),
-            databox_Field_DCESAbstract::Type        => new databox_Field_DCES_Type()
-        ];
+        static $fieldProvider = null;
+
+        if ($fieldProvider === null) {
+            $fieldProvider = new DublinCoreFieldProvider();
+        }
+
+        return $fieldProvider->getAvailableDublinCoreFields();
     }
 
     /**
@@ -302,17 +256,9 @@ class databox extends base implements ThumbnailedElement
         $connectionConfig = $connectionConfigs[$sbas_id];
         $connection = $app['db.provider']($connectionConfig);
 
-        $connectionSettings = new ConnectionSettings(
-            $connectionConfig['host'],
-            $connectionConfig['port'],
-            $connectionConfig['dbname'],
-            $connectionConfig['user'],
-            $connectionConfig['password']
-        );
-
         $versionRepository = new DataboxVersionRepository($connection);
 
-        parent::__construct($app, $connection, $connectionSettings, $versionRepository);
+        parent::__construct($app, $connection, $versionRepository);
 
         $this->loadFromRow($row);
     }
@@ -327,7 +273,7 @@ class databox extends base implements ThumbnailedElement
 
         $contents = str_replace(
             ["{{basename}}", "{{datapathnoweb}}"]
-            , [$this->connectionSettings->getDatabaseName(), rtrim($path_doc, '/').'/']
+            , [$this->connection->getDatabase(), rtrim($path_doc, '/').'/']
             , $contents
         );
 
@@ -450,14 +396,12 @@ class databox extends base implements ThumbnailedElement
             $this->saveStructure($dom_struct);
 
             $type = isset($field['type']) ? $field['type'] : 'string';
-            $type = in_array($type
-                    , [
-                    databox_field::TYPE_DATE
-                    , databox_field::TYPE_NUMBER
-                    , databox_field::TYPE_STRING
-                    , databox_field::TYPE_TEXT
-                    ]
-                ) ? $type : databox_field::TYPE_STRING;
+            $type = in_array($type, [
+                    databox_field::TYPE_DATE,
+                    databox_field::TYPE_NUMBER,
+                    databox_field::TYPE_STRING,
+                    databox_field::TYPE_TEXT
+                ]) ? $type : databox_field::TYPE_STRING;
 
             $multi = isset($field['multi']) ? (Boolean) (string) $field['multi'] : false;
 
@@ -636,7 +580,7 @@ class databox extends base implements ThumbnailedElement
 
     public function get_viewname()
     {
-        return $this->viewname ? : $this->connectionSettings->getDatabaseName();
+        return $this->viewname ? : $this->connection->getDatabase();
     }
 
     public function set_viewname($viewname)
@@ -941,9 +885,9 @@ class databox extends base implements ThumbnailedElement
     public function get_serialized_server_info()
     {
         return sprintf("%s@%s:%s (MySQL %s)",
-            $this->connectionSettings->getDatabaseName(),
-            $this->connectionSettings->getHost(),
-            $this->connectionSettings->getPort(),
+            $this->connection->getDatabase(),
+            $this->connection->getHost(),
+            $this->connection->getPort(),
             $this->get_connection()->getWrappedConnection()->getAttribute(\PDO::ATTR_SERVER_VERSION)
         );
     }

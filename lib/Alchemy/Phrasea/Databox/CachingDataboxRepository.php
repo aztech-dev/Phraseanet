@@ -11,7 +11,7 @@ namespace Alchemy\Phrasea\Databox;
 
 use Doctrine\Common\Cache\Cache;
 
-final class CachingDataboxRepositoryDecorator implements DataboxRepository
+final class CachingDataboxRepository implements DataboxRepository
 {
     /** @var DataboxRepository */
     private $repository;

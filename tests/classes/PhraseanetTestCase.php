@@ -331,7 +331,6 @@ abstract class PhraseanetTestCase extends WebTestCase
     {
         $cli = new CLI('cli test', null, $environment);
         $this->addMocks($cli);
-        $this->addAppCacheFlush($cli);
 
         return $cli;
     }
@@ -343,21 +342,11 @@ abstract class PhraseanetTestCase extends WebTestCase
         } else {
             $app = new Application($environment);
         }
-        $this->addAppCacheFlush($app);
 
         $this->loadDb($app);
         $this->addMocks($app);
 
         return $app;
-    }
-
-    protected function addAppCacheFlush(Application $app)
-    {
-        $app['phraseanet.cache-service'] = $app->share($app->extend('phraseanet.cache-service', function (CacheManager $cache) {
-            $cache->flushAll();
-
-            return $cache;
-        }));
     }
 
     protected function loadDb($app)

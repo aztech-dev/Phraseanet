@@ -10,7 +10,6 @@
  */
 
 use Alchemy\Phrasea\Application;
-use Alchemy\Phrasea\Core\Connection\ConnectionSettings;
 use Alchemy\Phrasea\Core\Database\DatabaseMaintenanceService;
 use Alchemy\Phrasea\Core\Version as PhraseaVersion;
 use Doctrine\DBAL\Connection;
@@ -38,11 +37,6 @@ abstract class base implements cache_cacheableInterface
     protected $schema;
 
     /**
-     * @var ConnectionSettings
-     */
-    protected $connectionSettings;
-
-    /**
      * @var Connection
      */
     protected $connection;
@@ -60,17 +54,14 @@ abstract class base implements cache_cacheableInterface
     /**
      * @param Application $application
      * @param Connection $connection
-     * @param ConnectionSettings $connectionSettings
      * @param PhraseaVersion\VersionRepository $versionRepository
      */
     public function __construct(Application $application,
         Connection $connection,
-        ConnectionSettings $connectionSettings,
         PhraseaVersion\VersionRepository $versionRepository)
     {
         $this->app = $application;
         $this->connection = $connection;
-        $this->connectionSettings = $connectionSettings;
         $this->versionRepository = $versionRepository;
     }
 
@@ -99,7 +90,7 @@ abstract class base implements cache_cacheableInterface
      */
     public function get_dbname()
     {
-        return $this->connectionSettings->getDatabaseName();
+        return $this->connection->getDatabase();
     }
 
     /**
@@ -107,7 +98,7 @@ abstract class base implements cache_cacheableInterface
      */
     public function get_passwd()
     {
-        return $this->connectionSettings->getPassword();
+        return $this->connection->getPassword();
     }
 
     /**
@@ -115,7 +106,7 @@ abstract class base implements cache_cacheableInterface
      */
     public function get_user()
     {
-        return $this->connectionSettings->getUser();
+        return $this->connection->getUsername();
     }
 
     /**
@@ -123,7 +114,7 @@ abstract class base implements cache_cacheableInterface
      */
     public function get_port()
     {
-        return $this->connectionSettings->getPort();
+        return $this->connection->getPort();
     }
 
     /**
@@ -131,7 +122,7 @@ abstract class base implements cache_cacheableInterface
      */
     public function get_host()
     {
-        return $this->connectionSettings->getHost();
+        return $this->connection->getHost();
     }
 
     /**
