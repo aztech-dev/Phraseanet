@@ -478,9 +478,7 @@ class ACL implements cache_cacheableInterface
     }
 
     /**
-     *
-     * @param  <type> $option
-     * @return <type>
+     * @param string $option
      */
     public function delete_data_from_cache($option = null)
     {
@@ -504,13 +502,12 @@ class ACL implements cache_cacheableInterface
                 break;
         }
 
-        return $this->app->getApplicationBox()->delete_data_from_cache($this->get_cache_key($option));
+        $this->app->getApplicationBox()->delete_data_from_cache($this->get_cache_key($option));
     }
 
     /**
-     *
-     * @param  <type> $option
-     * @return <type>
+     * @param string $option
+     * @return bool
      */
     public function get_data_from_cache($option = null)
     {
@@ -518,11 +515,10 @@ class ACL implements cache_cacheableInterface
     }
 
     /**
-     *
-     * @param  <type> $value
-     * @param  <type> $option
-     * @param  <type> $duration
-     * @return <type>
+     * @param mixed $value
+     * @param null $option
+     * @param int $duration
+     * @return bool
      */
     public function set_data_to_cache($value, $option = null, $duration = 0)
     {
@@ -847,7 +843,6 @@ class ACL implements cache_cacheableInterface
      */
     protected function load_rights_sbas()
     {
-
         if ($this->_rights_sbas && $this->_global_rights) {
             return $this;
         }
@@ -901,7 +896,7 @@ class ACL implements cache_cacheableInterface
             return $this;
         }
 
-        $sql = 'SELECT  u.* FROM basusr u, bas b, sbas s
+        $sql = 'SELECT u.* FROM basusr u, bas b, sbas s
             WHERE usr_id= :usr_id
             AND b.base_id = u.base_id
             AND b.sbas_id = s.sbas_id
@@ -1036,6 +1031,7 @@ class ACL implements cache_cacheableInterface
     {
         $this->load_rights_bas();
         $this->load_rights_sbas();
+
         $this->_global_rights['taskmanager'] = $this->is_admin();
 
         return $this;

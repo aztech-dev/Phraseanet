@@ -6,13 +6,13 @@ use Alchemy\Phrasea\Databox\Util\XmlHelper;
 
 class CandidateTerms
 {
-    public static function createFromDomDocument(\DOMDocument $candidateTermsDom)
+    public static function createFromDomDocument(\DOMDocument $document)
     {
-        $candidateTermsDom
+        $document
             ->documentElement
             ->setAttribute("modification_date", $now = date("YmdHis"));
 
-        return new self($candidateTermsDom->saveXML());
+        return new self($document->saveXML());
     }
 
     /**
@@ -34,6 +34,15 @@ class CandidateTerms
     public function getRawTerms()
     {
         return $this->xmlHelper->getRawXml();
+    }
+
+    public function setTermsFromDomDocument(\DOMDocument $document)
+    {
+        $document
+            ->documentElement
+            ->setAttribute("modification_date", $now = date("YmdHis"));
+
+        $this->xmlHelper->setRawXml($document->saveXML());
     }
 
     /**

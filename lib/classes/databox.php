@@ -498,7 +498,7 @@ class databox extends base implements ThumbnailedElement
             $this->connection->getDatabase(),
             $this->connection->getHost(),
             $this->connection->getPort(),
-            $this->get_connection()->getWrappedConnection()->getAttribute(\PDO::ATTR_SERVER_VERSION)
+            $this->connection->getWrappedConnection()->getAttribute(\PDO::ATTR_SERVER_VERSION)
         );
     }
 
@@ -532,8 +532,7 @@ class databox extends base implements ThumbnailedElement
 
     public function saveCterms(DOMDocument $dom_cterms)
     {
-        $this->candidateTerms = CandidateTerms::createFromDomDocument($dom_cterms);
-
+        $this->getCandidateTerms()->setTermsFromDomDocument($dom_cterms);
         $preference = $this->preferencesRepository->findFirstByProperty('cterms');
 
         if (! $preference) {
@@ -552,7 +551,7 @@ class databox extends base implements ThumbnailedElement
     {
         $old_thesaurus = $this->get_dom_thesaurus();
 
-        $this->thesaurus = Thesaurus::createFromDomDocument($dom_thesaurus);
+        $this->getThesaurus()->setThesaurusFromDomDocument($dom_thesaurus);
 
         $preference = $this->preferencesRepository->findFirstByProperty('thesaurus');
 

@@ -59,7 +59,6 @@ class databox_field implements cache_cacheableInterface
     /** @var int */
     protected $sbas_id;
 
-    protected static $_instance = [];
     protected static $knownDCES = [
         'Contributor' => 'databox_Field_DCES_Contributor',
         'Coverage'    => 'databox_Field_DCES_Coverage',
@@ -162,10 +161,62 @@ class databox_field implements cache_cacheableInterface
         }
 
         $this->separator = self::checkMultiSeparator($row['separator'], $this->multi);
-
         $this->thumbtitle = $row['thumbtitle'];
 
         $this->loadVocabulary();
+    }
+
+    public function getRowData()
+    {
+        return [
+            'name' => $this->name,
+            'src' => $this->tag->getTagname(),
+            'indexable' => $this->indexable ? '1' : '0',
+            'readonly' => $this->readonly ? '1' : '0',
+            'required' => $this->required ? '1' : '0',
+            'separator' => $this->separator,
+            'multi' => $this->multi ? '1' : '0',
+            'business' => $this->Business ? '1' : '0',
+            'aggregable' => $this->aggregable,
+            'report' => $this->report ? '1' : '0',
+            'tbranch' => $this->tbranch,
+            'type' => $this->type,
+            'sorter' => $this->position,
+            'thumbtitle' => $this->thumbtitle,
+            'VocabularyControlType' => $this->Vocabulary ? $this->Vocabulary->getType() : null,
+            'RestrictToVocabularyControl' => $this->Vocabulary ? ($this->VocabularyRestriction ? '1' : '0') : '0',
+            'id' => $this->id,
+            'label_en' => isset($this->labels['en']) ? $this->labels['en'] : null,
+            'label_fr' => isset($this->labels['fr']) ? $this->labels['fr'] : null,
+            'label_de' => isset($this->labels['de']) ? $this->labels['de'] : null,
+            'label_nl' => isset($this->labels['nl']) ? $this->labels['nl'] : null
+        ];
+    }
+
+    public function toArray()
+    {
+        return [
+            'id'                    => $this->id,
+            'sbas-id'               => $this->sbas_id,
+            'labels'                => $this->labels,
+            'name'                  => $this->name,
+            'tag'                   => $this->tag->getTagname(),
+            'business'              => $this->Business,
+            'aggregable'            => $this->aggregable,
+            'type'                  => $this->type,
+            'sorter'                => $this->position,
+            'thumbtitle'            => $this->thumbtitle,
+            'tbranch'               => $this->tbranch,
+            'separator'             => $this->separator,
+            'required'              => $this->required,
+            'report'                => $this->report,
+            'readonly'              => $this->readonly,
+            'multi'                 => $this->multi,
+            'dces-element'          => $this->dces_element ? $this->dces_element->get_label() : null,
+            'indexable'             => $this->indexable,
+            'vocabulary-type'       => $this->Vocabulary ? $this->Vocabulary->getType() : null,
+            'vocabulary-restricted' => $this->VocabularyRestriction,
+        ];
     }
 
     /**
@@ -845,32 +896,6 @@ class databox_field implements cache_cacheableInterface
         return $this->on_error;
     }
 
-    public function toArray()
-    {
-        return [
-            'id'                    => $this->id,
-            'sbas-id'               => $this->sbas_id,
-            'labels'                => $this->labels,
-            'name'                  => $this->name,
-            'tag'                   => $this->tag->getTagname(),
-            'business'              => $this->Business,
-            'aggregable'            => $this->aggregable,
-            'type'                  => $this->type,
-            'sorter'                => $this->position,
-            'thumbtitle'            => $this->thumbtitle,
-            'tbranch'               => $this->tbranch,
-            'separator'             => $this->separator,
-            'required'              => $this->required,
-            'report'                => $this->report,
-            'readonly'              => $this->readonly,
-            'multi'                 => $this->multi,
-            'indexable'             => $this->indexable,
-            'dces-element'          => $this->dces_element ? $this->dces_element->get_label() : null,
-            'vocabulary-type'       => $this->Vocabulary ? $this->Vocabulary->getType() : null,
-            'vocabulary-restricted' => $this->VocabularyRestriction,
-        ];
-    }
-
     /**
      *
      * @param \Alchemy\Phrasea\Application $app
@@ -1004,6 +1029,6 @@ class databox_field implements cache_cacheableInterface
 
     public static function purge()
     {
-        self::$_instance = [];
+
     }
 }

@@ -36,6 +36,15 @@ class Thesaurus
         return $this->xmlHelper->getRawXml();
     }
 
+    public function setThesaurusFromDomDocument(\DOMDocument $document)
+    {
+        $document
+            ->documentElement
+            ->setAttribute("modification_date", $now = date("YmdHis"));
+
+        $this->xmlHelper->setRawXml($document->saveXML());
+    }
+
     /**
      * @return false|\SimpleXMLElement
      */
