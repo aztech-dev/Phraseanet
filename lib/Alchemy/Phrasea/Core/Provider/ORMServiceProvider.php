@@ -85,18 +85,7 @@ class ORMServiceProvider implements ServiceProviderInterface
             /** @var ConnectionPoolManager $connectionPool */
             $connectionPool = $app['dbal.connection_pool'];
             /** @var Connection $connection */
-            $connection = $connectionPool->get($parameters);
-
-            if (! $connection->getConfiguration()->getSQLLogger()) {
-                /** @var DoctrineDataCollector $collector */
-                $collector = $app['data_collectors.doctrine'];
-                $logger = new DebugStack();
-
-                $connection->getConfiguration()->setSQLLogger($logger);
-                $collector->addLogger($logger);
-            }
-
-            return $connection;
+            return $connectionPool->get($parameters);
         });
 
         $app['orm.em'] = $app->share(function (PhraseaApplication $app) {
