@@ -24,6 +24,7 @@ use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Logging\DebugStack;
 use Doctrine\DBAL\Logging\EchoSQLLogger;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\EntityManager;
@@ -34,6 +35,7 @@ use Gedmo\Timestampable\TimestampableListener;
 use RandomLib\Factory;
 use Silex\Application;
 use Silex\ServiceProviderInterface;
+use Sorien\DataCollector\DoctrineDataCollector;
 
 class ORMServiceProvider implements ServiceProviderInterface
 {
@@ -86,7 +88,12 @@ class ORMServiceProvider implements ServiceProviderInterface
             $connection = $connectionPool->get($parameters);
 
             if (! $connection->getConfiguration()->getSQLLogger()) {
-                $connection->getConfiguration()->setSQLLogger($app['dbal.logger']);
+                /** @var DoctrineDataCollector $collector */
+                $collector = $app['data_collectors.doctrine'];
+                $logger = new DebugStack();
+
+                $connection->getConfiguration()->setSQLLogger($logger);
+                $collector->addLogger($logger);
             }
 
             return $connection;
@@ -95,8 +102,11 @@ class ORMServiceProvider implements ServiceProviderInterface
         $app['orm.em'] = $app->share(function (PhraseaApplication $app) {
             $connectionParameters = $this->buildConnectionParameters($app);
             $configuration = $this->buildConfiguration($app, $app['dbal.logger']);
+
+            /** @var ConnectionPoolManager $connectionPool */
+            $connectionPool = $app['dbal.connection_pool'];
             /** @var Connection $connection */
-            $connection = $app['dbal.provider']($connectionParameters);
+            $connection = $connectionPool->get($connectionParameters);
 
             $this->registerCustomTypes();
             $this->registerEventListeners($connection->getEventManager());

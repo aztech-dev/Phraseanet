@@ -581,9 +581,7 @@ class databox extends base implements ThumbnailedElement
      */
     public function registerAdmin(User $user)
     {
-        $service = $this->getDataboxService();
-
-        $service->addDataboxAdmin($this, $user);
+        $this->getDataboxService()->addDataboxAdmin($this, $user);
 
         return $this;
     }
