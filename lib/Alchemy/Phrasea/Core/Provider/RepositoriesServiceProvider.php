@@ -20,6 +20,7 @@ use Alchemy\Phrasea\Collection\Factory\DbalCollectionRepositoryFactory;
 use Alchemy\Phrasea\Collection\Reference\ArrayCacheCollectionReferenceRepository;
 use Alchemy\Phrasea\Collection\Reference\DbalCollectionReferenceRepository;
 use Alchemy\Phrasea\Databox\DataboxConnectionProvider;
+use Alchemy\Phrasea\Databox\Field\CachingDataboxFieldRepository;
 use Alchemy\Phrasea\Databox\Field\DataboxFieldFactory;
 use Alchemy\Phrasea\Databox\Field\DbalDataboxFieldRepository;
 use Alchemy\Phrasea\Databox\Record\LegacyRecordRepository;
@@ -138,7 +139,12 @@ class RepositoriesServiceProvider implements ServiceProviderInterface
         });
 
         $app['repo.fields.factory'] = $app->protect(function (\databox $databox) use ($app) {
-            return new DbalDataboxFieldRepository($databox->get_connection(), new DataboxFieldFactory($app, $databox));
+            $factory = new DataboxFieldFactory($app, $databox);
+            $repository = new DbalDataboxFieldRepository($databox->get_connection(), $factory);
+            $cache = $app['cache'];
+            $cacheKey = 'repo.fields.' . $databox->getDataObject()->getDataboxId();
+
+            return new CachingDataboxFieldRepository($repository, $factory, $cache, $cacheKey);
         });
 
         $app['repo.records.factory'] = $app->protect(function (\databox $databox) use ($app) {
