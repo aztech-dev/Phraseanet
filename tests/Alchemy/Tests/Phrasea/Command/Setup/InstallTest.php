@@ -45,45 +45,30 @@ class InstallTest extends \PhraseanetTestCase
                         return 'mock';
                     case 'appbox':
                         return $infoDb['database']['ab_name'];
-                        break;
                     case 'databox':
                         return $infoDb['database']['db_name'];
-                        break;
                     case 'db-template':
                         return $template;
-                        break;
                     case 'email':
                         return $email;
-                        break;
                     case 'password':
                         return $password;
-                        break;
                     case 'data-path':
                         return $dataPath;
-                        break;
                     case 'server-name':
                         return $serverName;
-                        break;
-                    case 'yes':
-                        return true;
-                        break;
                     case 'db-host':
                         return $infoDb['database']['host'];
-                        break;
                     case 'db-port':
                         return $infoDb['database']['port'];
-                        break;
                     case 'db-user':
                         return $infoDb['database']['user'];
-                        break;
                     case 'db-password':
                         return $infoDb['database']['password'];
-                        break;
                     case 'yes':
                         return true;
-                        break;
                     default:
-                        return;
+                        return null;
                 }
             }));
 

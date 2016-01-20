@@ -380,42 +380,45 @@ class RegenerateSqliteDb extends Command
 
     private function generateCollection(\Pimple $DI)
     {
-        $coll = $collection_no_acces = $collection_no_acces_by_status = null;
+        $coll = $collection_no_access = $collection_no_access_by_status = null;
         /** @var \databox[] $databoxes */
         $databoxes = $this->container->getDataboxes();
 
         foreach ($databoxes as $databox) {
             foreach ($databox->get_collections() as $collection) {
-                if ($collection_no_acces instanceof \collection && !$collection_no_acces_by_status) {
-                    $collection_no_acces_by_status = $collection;
+                if ($collection_no_access instanceof \collection && !$collection_no_access_by_status) {
+                    $collection_no_access_by_status = $collection;
                 }
-                if ($coll instanceof \collection && !$collection_no_acces) {
-                    $collection_no_acces = $collection;
+
+                if ($coll instanceof \collection && !$collection_no_access) {
+                    $collection_no_access = $collection;
                 }
+
                 if (!$coll) {
                     $coll = $collection;
                 }
+
                 if ($coll instanceof \collection
-                    && $collection_no_acces instanceof \collection
-                    && $collection_no_acces_by_status instanceof \collection) {
+                    && $collection_no_access instanceof \collection
+                    && $collection_no_access_by_status instanceof \collection) {
                     break 2;
                 }
             }
         }
 
-        $DI['databox'] = $databox = $coll->get_databox();
+        $DI['databox'] = $databox = $coll->getDatabox();
         $DI['coll'] = $coll;
-        if (!$collection_no_acces instanceof \collection) {
-            $collection_no_acces = \collection::create($this->container, $databox, $this->container->getApplicationBox(), 'COLL_TEST_NO_ACCESS', $DI['user']);
+        if (!$collection_no_access instanceof \collection) {
+            $collection_no_access = \collection::create($this->container, $databox, $this->container->getApplicationBox(), 'COLL_TEST_NO_ACCESS', $DI['user']);
         }
 
-        $DI['coll_no_access'] = $collection_no_acces;
+        $DI['coll_no_access'] = $collection_no_access;
 
-        if (!$collection_no_acces_by_status instanceof \collection) {
-            $collection_no_acces_by_status = \collection::create($this->container, $databox, $this->container->getApplicationBox(), 'COLL_TEST_NO_ACCESS_BY_STATUS', $DI['user']);
+        if (!$collection_no_access_by_status instanceof \collection) {
+            $collection_no_access_by_status = \collection::create($this->container, $databox, $this->container->getApplicationBox(), 'COLL_TEST_NO_ACCESS_BY_STATUS', $DI['user']);
         }
 
-        $DI['coll_no_status'] = $collection_no_acces_by_status;
+        $DI['coll_no_status'] = $collection_no_access_by_status;
     }
 
     private function generateRecord(\Pimple $DI)

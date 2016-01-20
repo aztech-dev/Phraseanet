@@ -52,6 +52,29 @@ final class CachedCollectionRepository implements CollectionRepository
     }
 
     /**
+     * @return string[] The names of unmounted collections indexed by their collection ID.
+     */
+    public function findUnmountedCollections()
+    {
+        $cacheKey = hash('sha256', $this->cacheKey . __FUNCTION__);
+        $collections = $this->cache->fetch($cacheKey);
+
+        if ($collections === false) {
+            $collections = $this->repository->findUnmountedCollections();
+            $this->putInCache($cacheKey, $collections);
+        }
+
+        return $collections;
+    }
+
+    public function findActivableCollections()
+    {
+        return array_filter($this->findAll(), function (\collection $collection) {
+            return ! $collection->getReference()->isActive();
+        });
+    }
+
+    /**
      * @return \collection[]
      */
     public function findAll()

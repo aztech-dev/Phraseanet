@@ -341,6 +341,14 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
     }
 
     /**
+     * @return databox
+     */
+    public function getDatabox()
+    {
+        return $this->databox;
+    }
+
+    /**
      * @return CollectionVO
      */
     public function getCollection()
@@ -367,10 +375,11 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
     /**
      *
      * @return databox
+     * @deprecated Use getDatabox() instead
      */
     public function get_databox()
     {
-        return $this->databox;
+        return $this->getDatabox();
     }
 
     /**
@@ -572,6 +581,8 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->reference->disable();
 
         $this->getReferenceRepository()->save($this->reference);
+        $this->getCollectionRepository()->save($this->collectionVO);
+
         $this->collectionRepositoryRegistry->purgeRegistry();
 
 	    $this->dispatch(CollectionEvents::DISABLED, new DisabledEvent($this));
@@ -587,6 +598,8 @@ class collection implements ThumbnailedElement, cache_cacheableInterface
         $this->reference->enable();
 
         $this->getReferenceRepository()->save($this->reference);
+        $this->getCollectionRepository()->save($this->collectionVO);
+
         $this->collectionRepositoryRegistry->purgeRegistry();
 
 	    $this->dispatch(CollectionEvents::ENABLED, new EnabledEvent($this));

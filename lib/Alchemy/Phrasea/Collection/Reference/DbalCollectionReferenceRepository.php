@@ -36,14 +36,14 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
     /**
      * @var Connection
      */
-    private $connection;
+    private $appboxConnection;
 
     /**
-     * @param Connection $connection
+     * @param Connection $appboxConnection
      */
-    public function __construct(Connection $connection)
+    public function __construct(Connection $appboxConnection)
     {
-        $this->connection = $connection;
+        $this->appboxConnection = $appboxConnection;
     }
 
     /**
@@ -51,7 +51,7 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
      */
     public function findAll()
     {
-        return $this->createManyReferences($this->connection->fetchAll(self::$selectQuery));
+        return $this->createManyReferences($this->appboxConnection->fetchAll(self::$selectQuery));
     }
 
     /**
@@ -61,7 +61,7 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
     public function findAllByDatabox($databoxId)
     {
         $query = self::$selectQuery . ' WHERE sbas_id = :databoxId';
-        $rows = $this->connection->fetchAll($query, [ ':databoxId' => $databoxId ]);
+        $rows = $this->appboxConnection->fetchAll($query, [ ':databoxId' => $databoxId ]);
 
         return $this->createManyReferences($rows);
     }
@@ -73,7 +73,7 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
     public function find($baseId)
     {
         $query = self::$selectQuery . ' WHERE base_id = :baseId';
-        $row = $this->connection->fetchAssoc($query, [ ':baseId' => $baseId ]);
+        $row = $this->appboxConnection->fetchAssoc($query, [ ':baseId' => $baseId ]);
 
         if ($row !== false) {
             return $this->createReference($row);
@@ -90,7 +90,7 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
     public function findByCollectionId($databoxId, $collectionId)
     {
         $query = self::$selectQuery . ' WHERE sbas_id = :databoxId AND server_coll_id = :collectionId';
-        $row = $this->connection->fetchAssoc($query, [ ':databoxId' => $databoxId, ':collectionId' => $collectionId ]);
+        $row = $this->appboxConnection->fetchAssoc($query, [ ':databoxId' => $databoxId, ':collectionId' => $collectionId ]);
 
         if ($row !== false) {
             return $this->createReference($row);
@@ -99,6 +99,10 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
         return null;
     }
 
+    /**
+     * @param CollectionReference $collectionReference
+     * @throws \Doctrine\DBAL\DBALException
+     */
     public function save(CollectionReference $collectionReference)
     {
         $query = self::$insertQuery;
@@ -121,10 +125,10 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
             $parameters['collectionId'] = $collectionReference->getCollectionId();
         }
 
-        $this->connection->executeQuery($query, $parameters);
+        $this->appboxConnection->executeQuery($query, $parameters);
 
         if ($isInsert) {
-            $collectionReference->setBaseId($this->connection->lastInsertId());
+            $collectionReference->setBaseId($this->appboxConnection->lastInsertId());
         }
     }
 
@@ -138,7 +142,7 @@ class DbalCollectionReferenceRepository implements CollectionReferenceRepository
             'baseId' => $collectionReference->getBaseId()
         ];
 
-        $this->connection->executeQuery(self::$deleteQuery, $parameters);
+        $this->appboxConnection->executeQuery(self::$deleteQuery, $parameters);
     }
 
     /**

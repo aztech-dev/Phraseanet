@@ -70,7 +70,7 @@ class XmlHelper
 
             $this->domDocument = false;
 
-            if ($dom->loadXML($this->rawXml) !== false) {
+            if (@$dom->loadXML($this->rawXml) !== false) {
                 $this->domDocument = $dom;
             }
         }
@@ -101,7 +101,6 @@ class XmlHelper
         $this->domXpath = null;
 
         if (trim($this->rawXml) == '') {
-            $this->simpleXmlElement = false;
             $this->domDocument = false;
             $this->domXpath = false;
         }

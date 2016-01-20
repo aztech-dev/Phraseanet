@@ -385,17 +385,10 @@ class ACL implements cache_cacheableInterface
             /**
              * apply sb is substractive
              */
-            $mand = substr(
-                str_repeat('0', 32)
-                . decbin($mask_and)
-                , -32
-            );
-            $mxor = substr(
-                str_repeat('0', 32)
-                . decbin($mask_xor)
-                , -32
-            );
+            $mand = substr(str_repeat('0', 32) . decbin($mask_and), -32);
+            $mxor = substr(str_repeat('0', 32) . decbin($mask_xor), -32);
             $m = ['aa' => '', 'ao' => '', 'xa' => '', 'xo' => ''];
+
             for ($i = 0; $i < 32; $i++) {
                 $ax = $mand[$i] . $mxor[$i];
 
