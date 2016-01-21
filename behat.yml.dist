@@ -1,0 +1,7 @@
+default:
+    extensions:
+        Behat\MinkExtension:
+            base_url: "http://phraseanet-php55-nginx/"
+            sessions:
+              default:
+                goutte: ~
