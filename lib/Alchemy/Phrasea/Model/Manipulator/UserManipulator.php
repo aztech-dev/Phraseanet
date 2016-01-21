@@ -48,7 +48,6 @@ class UserManipulator implements ManipulatorInterface
     /** @var EventDispatcherInterface */
     private $dispatcher;
 
-
     public function __construct(UserManager $manager, PasswordEncoderInterface $passwordEncoder, GeonamesConnector $connector, EntityRepository $repo, Generator $generator, EventDispatcherInterface $dispatcher)
     {
         $this->manager = $manager;

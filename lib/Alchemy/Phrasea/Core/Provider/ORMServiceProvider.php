@@ -119,7 +119,7 @@ class ORMServiceProvider implements ServiceProviderInterface
      */
     private function buildConfiguration(PhraseaApplication $app)
     {
-        $devMode = $app->getEnvironment() == PhraseaApplication::ENV_DEV;
+        $devMode = $app['debug'];
         $proxiesDirectory = $app['root.path'] . '/resources/proxies';
         $doctrineAnnotationsPath = $app['root.path'] . '/vendor/doctrine/orm/lib/Doctrine/ORM/Mapping/Driver/DoctrineAnnotations.php';
 

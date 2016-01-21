@@ -159,27 +159,27 @@ class Application extends SilexApplication
         return $this->environment;
     }
 
-    public function __construct($environment = self::ENV_PROD)
+    public function __construct($environment = self::ENV_PROD, $forceDebug = false)
     {
         parent::__construct();
 
         error_reporting(-1);
 
         $this->environment = $environment;
+        $this['debug'] = $forceDebug || !in_array($environment, [
+            Application::ENV_PROD,
+            Application::ENV_TEST,
+        ]);
 
         $this->setupCharset();
         $this->setupApplicationPaths();
         $this->setupConstants();
 
-        $this['debug'] = !in_array($environment, [
-            Application::ENV_PROD,
-            Application::ENV_TEST,
-        ]);
-
         if ($this['debug']) {
             ini_set('log_errors', 'on');
             ini_set('error_log', $this['root.path'].'/logs/php_error.log');
         }
+
         if ('allowed' == getenv('APP_CONTAINER_DUMP')) {
             $this->register(new PimpleDumpProvider());
         }
@@ -392,7 +392,7 @@ class Application extends SilexApplication
             );
         });
 
-        if (self::ENV_DEV === $this->getEnvironment()) {
+        if ($this['debug']) {
             $this->register($p = new WebProfilerServiceProvider(), [
                 'profiler.cache_dir' => $this['cache.path'].'/profiler',
             ]);

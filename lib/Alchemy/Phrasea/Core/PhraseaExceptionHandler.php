@@ -47,7 +47,7 @@ class PhraseaExceptionHandler extends SymfonyExceptionHandler
 
     public function getContent(FlattenException $exception)
     {
-        if ($exception->getStatusCode() == '500') {
+        if ($exception->getStatusCode() == '500' || $exception->getStatusCode() == '400') {
             $this->logger->error($exception->getMessage(), [
                 'code' => $exception->getCode(),
                 'trace' => $exception->getTrace()

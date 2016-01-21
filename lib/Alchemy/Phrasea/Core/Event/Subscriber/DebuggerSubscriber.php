@@ -37,7 +37,7 @@ class DebuggerSubscriber implements EventSubscriberInterface
 
     public function checkIp(GetResponseEvent $event)
     {
-        if (Application::ENV_DEV !== $this->app->getEnvironment()) {
+        if ($this->app['debug']) {
             return;
         }
 

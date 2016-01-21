@@ -37,7 +37,7 @@ class DoctrineQueriesLoggerSubscriber implements EventSubscriberInterface
 
     public function logQueries(GetResponseEvent $event)
     {
-        if (Application::ENV_DEV !== $this->app->getEnvironment()) {
+        if ($this->app['debug']) {
             return;
         }
 

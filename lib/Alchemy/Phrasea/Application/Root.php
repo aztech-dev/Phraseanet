@@ -23,8 +23,8 @@ use Monolog\Processor\WebProcessor;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 
-return call_user_func(function ($environment = PhraseaApplication::ENV_PROD) {
-    $app = new PhraseaApplication($environment);
+return call_user_func(function ($environment = PhraseaApplication::ENV_PROD, $forceDebug) {
+    $app = new PhraseaApplication($environment, $forceDebug);
     $app->loadPlugins();
 
     $app['exception_handler'] = $app->share(function ($app) {
@@ -38,7 +38,6 @@ return call_user_func(function ($environment = PhraseaApplication::ENV_PROD) {
     }));
 
     $app->before(function (Request $request) use ($app) {
-
         if (0 === strpos($request->getPathInfo(), '/setup')) {
             if (!$app['phraseanet.configuration-tester']->isInstalled()) {
                 if (!$app['phraseanet.configuration-tester']->isBlank()) {
@@ -70,4 +69,4 @@ return call_user_func(function ($environment = PhraseaApplication::ENV_PROD) {
     );
 
     return $app;
-}, isset($environment) ? $environment : PhraseaApplication::ENV_PROD);
+}, isset($environment) ? $environment : PhraseaApplication::ENV_PROD, isset($forceDebug) ? $forceDebug : false);
